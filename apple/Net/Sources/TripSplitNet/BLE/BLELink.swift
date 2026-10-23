@@ -23,6 +23,8 @@ public final class BLELink: Link, @unchecked Sendable {
     private let ownTxLimit: Int
     private let unfinishedTimeout: TimeInterval
     private let onClose: @Sendable () -> Void
+    private let limitProvider: (@Sendable () -> Int)?
+    private let peerCap: Int
 
     private let lock = NSLock()
     private var reassembler: BLEReassembler
@@ -32,10 +34,15 @@ public final class BLELink: Link, @unchecked Sendable {
     private var generation = 0
 
     /// `receiveLimit`: the largest chunk we accept. `initialChunkSize`: the chunk size we send with.
+    /// `limitProvider` (central): the current platform write limit, read before each message; `peerCap`: `info.maxChunk`.
     /// A peripheral starts with 20 and moves up when it has read the hello of the central; `txLimit` is
     /// then the largest notification the platform allows for that central.
     public init(writer: any BLEChunkWriter, receiveLimit: Int, initialChunkSize: Int, isPeripheral: Bool,
-                txLimit: Int = 512, unfinishedTimeout: TimeInterval = 15, onClose: @escaping @Sendable () -> Void = {}) {
+                txLimit: Int = 512, unfinishedTimeout: TimeInterval = 15,
+                limitProvider: (@Sendable () -> Int)? = nil, peerCap: Int = BLEChunk.maxChunkSize,
+                onClose: @escaping @Sendable () -> Void = {}) {
+        self.limitProvider = limitProvider
+        self.peerCap = BLEChunk.clamp(peerCap)
         self.writer = writer
         self.isPeripheral = isPeripheral
         ownTxLimit = BLEChunk.clamp(txLimit)
@@ -51,6 +58,12 @@ public final class BLELink: Link, @unchecked Sendable {
     // MARK: Link
 
     public func send(_ bytes: [UInt8]) async throws {
+        // iOS finishes its MTU exchange some time after the connection starts. Read the platform limit
+        // again before each message and raise the chunk size when it grew. Never lower it.
+        if let limitProvider {
+            let wanted = BLEChunk.clamp(min(limitProvider(), peerCap))
+            lock.withLock { if wanted > sendChunkSize { sendChunkSize = wanted } }
+        }
         let chunks: [[UInt8]] = try lock.withLock {
             guard !closed else { throw BLELinkError.closed }
             return BLEChunk.split(bytes, chunkSize: sendChunkSize, seq: &sendSeq)
