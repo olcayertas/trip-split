@@ -30,3 +30,13 @@ public func historyEntries(ops: [JSONValue]) -> [HistoryEntry] {
     }
     return out.sorted { byteLess($1.hlc, $0.hlc) }
 }
+
+/// The member this device tried to claim last, when the fold gave it to another device (SPEC §4.4: the
+/// claim with the lower HLC wins). `history` is newest first. nil when there is no lost claim.
+public func lostClaim(history: [HistoryEntry], deviceId: String, state: GroupState) -> GroupState.Member? {
+    guard let last = history.first(where: { $0.author == deviceId && ($0.type == "member.claim" || $0.type == "member.unclaim") }),
+          last.type == "member.claim", let id = last.subjectId,
+          let member = state.members.first(where: { $0.id == id }), member.claimedBy != deviceId
+    else { return nil }
+    return member
+}

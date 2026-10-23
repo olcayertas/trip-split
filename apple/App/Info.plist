@@ -23,6 +23,17 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.olcayertas.TripSplit</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tripsplit</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
@@ -33,6 +44,8 @@
 	<array>
 		<string>_tripsplit._tcp</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>TripSplit uses the camera to scan the QR code of a group invite.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>TripSplit finds the other phones of your group on the same Wi-Fi network and syncs the group with them.</string>
 	<key>UILaunchScreen</key>

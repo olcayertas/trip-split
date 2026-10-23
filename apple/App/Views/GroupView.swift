@@ -5,7 +5,12 @@ import TripSplitStore
 struct GroupView: View {
     let repository: GroupRepository
     let groupId: String
+    var openNearby = false
     @State private var tab = Tab.expenses
+    @State private var showNearby = false
+    @State private var claiming = false
+    @State private var claimAsked = false
+    @State private var newcomerId: String?
 
     enum Tab: Hashable { case expenses, balances, members }
 
@@ -19,11 +24,33 @@ struct GroupView: View {
             BalancesTab(repository: repository, groupId: groupId)
                 .tabItem { Label("Balances", systemImage: "scale.3d") }
                 .tag(Tab.balances)
-            MembersTab(repository: repository, groupId: groupId)
+            MembersTab(repository: repository, groupId: groupId, onNewMember: offerNewcomerChoice)
                 .tabItem { Label("Members", systemImage: "person.2.fill") }
                 .tag(Tab.members)
         }
         .tint(M3Color.primary)
+        .safeAreaInset(edge: .top) {
+            if state.group == nil { waitingBanner }
+        }
+        .navigationDestination(isPresented: $showNearby) { NearbyView(repository: repository, groupId: groupId) }
+        .sheet(isPresented: $claiming) { ClaimSheet(repository: repository, groupId: groupId, onNewMember: offerNewcomerChoice) }
+        .confirmationDialog(newcomerTitle, isPresented: Binding(get: { newcomerId != nil }, set: { if !$0 { newcomerId = nil } }),
+                            titleVisibility: .visible, presenting: newcomerId) { id in
+            Button("From now on") {}
+            if !newcomerPlan(id).edits.isEmpty {
+                Button("Also earlier expenses") { applyNewcomer(id) }.accessibilityIdentifier("alsoEarlier")
+            }
+        } message: { id in
+            Text(newcomerMessage(newcomerPlan(id)))
+        }
+        .task { if openNearby { showNearby = true } }
+        // When the log arrives and this phone has no member yet, ask who the user is (once).
+        .onChange(of: state.group?.name) {
+            if state.group != nil, repository.myMember(in: groupId) == nil, !claimAsked {
+                claimAsked = true
+                claiming = true
+            }
+        }
         .navigationTitle(state.group?.name ?? String(localized: "Group"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -43,6 +70,52 @@ struct GroupView: View {
                 }
             }
         }
+    }
+}
+
+extension GroupView {
+    /// PLAN §7.1: a member that is new to the group can also join the earlier expenses. Ask once.
+    fileprivate func offerNewcomerChoice(_ memberId: String) {
+        let plan = newcomerPlan(memberId)
+        guard !plan.edits.isEmpty || !plan.exactExpenses.isEmpty else { return }
+        Task {
+            // A sheet may still be closing; wait a moment so the dialog is not lost.
+            try? await Task.sleep(for: .milliseconds(600))
+            newcomerId = memberId
+        }
+    }
+
+    fileprivate func newcomerPlan(_ memberId: String) -> NewcomerPlan { newcomerEdits(memberId: memberId, state: state) }
+
+    fileprivate var newcomerTitle: String {
+        String(localized: "Add \(newcomerId.map(state.memberName) ?? "") to earlier expenses?")
+    }
+
+    fileprivate func newcomerMessage(_ plan: NewcomerPlan) -> String {
+        var text = String(localized: "From now on: earlier expenses do not change. Also earlier expenses: \(plan.edits.count) expenses change.")
+        if !plan.exactExpenses.isEmpty {
+            text += "\n" + String(localized: "These expenses have exact amounts and stay as they are. Edit them by hand: \(plan.exactExpenses.map(\.title).joined(separator: ", ")).")
+        }
+        return text
+    }
+
+    fileprivate func applyNewcomer(_ memberId: String) {
+        let plan = newcomerPlan(memberId)
+        Task {
+            for edit in plan.edits { _ = try? await repository.append(groupId: groupId, type: "expense.edit", body: edit) }
+        }
+    }
+
+    fileprivate var waitingBanner: some View {
+        M3Card {
+            VStack(alignment: .leading, spacing: M3Spacing.s) {
+                Label("Waiting for the first sync", systemImage: "arrow.triangle.2.circlepath").m3(M3Type.titleMedium)
+                Text("Open Nearby on this phone and on a phone of the group. The expenses arrive when the phones find each other.")
+                    .m3(M3Type.bodyMedium).foregroundStyle(M3Color.onSurfaceVariant)
+                Button("Open Nearby") { showNearby = true }.buttonStyle(M3TonalButtonStyle())
+            }
+        }
+        .padding(M3Spacing.l)
     }
 }
 
