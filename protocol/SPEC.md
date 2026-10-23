@@ -305,6 +305,9 @@ Anything else is invalid. Vectors: `invite.json`.
 
 ## 10. Transports
 
+The nearby transports are Wi-Fi LAN (§10.1) and BLE (§10.2). The internet relay (§10.4) is different: it
+stores encrypted batches and does not carry the session.
+
 Wi-Fi LAN and BLE carry the same messages: the two handshake records (§8.1), then frames. LAN sends
 them as a plain TCP byte stream. BLE sends each record and each frame as a **message** split into
 chunks (§10.2.4). Everything above the transport (§8) is identical.
@@ -538,3 +541,83 @@ range, can read it in the DNS-SD TXT record (§10.1.1) and in the `info` charact
 observer can use it to link the devices of one group across places and time. The tag reveals nothing
 about the content of the group: it does not give the key, the name or the ops. Version 1 keeps the
 static tag. Rotating tags are listed in `docs/PLAN.md` §16.
+
+### 10.4 Internet relay
+
+The relay is a third transport for phones that are not near each other. It is a mailbox server: it
+stores encrypted op batches for each group and gives them back. It never holds the group key, so it
+cannot read or change the ops. It does not run the session of §8; the phones talk to it over HTTPS.
+The reference relay is `protocol/tools/relay.py`. The production relay is the Cloudflare Worker in
+`relay/`.
+
+#### 10.4.1 Keys and names
+
+All values come from `groupKey`. They are different from the discovery tag, so a person who sees the
+tag on a network cannot find the mailbox.
+
+- `mailboxId = lowercase hex(HMAC-SHA256(key = groupKey, msg = "tripsplit/v1/relay/mailbox")[0..16])`
+  (32 characters).
+- `relayToken = lowercase hex(HMAC-SHA256(key = groupKey, msg = "tripsplit/v1/relay/token"))`
+  (64 characters).
+- `batchKey = HKDF-SHA256(ikm = groupKey, salt = empty, info = "tripsplit/v1/relay/batch/" || groupId, L = 32)`.
+
+#### 10.4.2 Batch
+
+- The plaintext is canonical JSON `{"ops":[...]}` with 1–64 op envelopes, at most 256 KiB, in the
+  order of §7 (author bytes, then seq).
+- `blob = nonce (12 random bytes) || AES-256-GCM(batchKey, nonce, plaintext, aad = mailboxId as ASCII)`
+  (ciphertext followed by the 16-byte tag).
+- A blob that does not decrypt, or a plaintext that does not parse, is skipped. The client continues
+  with the next blob.
+- Each op in a decrypted batch goes through §8.3 steps 3–5, with one change: a hash error skips the
+  batch, it does not stop the sync.
+
+#### 10.4.3 HTTP API
+
+The base URL is fixed in the app build. Each request sends `Authorization: Bearer <relayToken>`.
+
+| Request | Body | Answer |
+|---|---|---|
+| `POST /v1/m/<mailboxId>/batches` | the blob, `Content-Type: application/octet-stream`, at most 320 KiB | `201 {"cursor": n}` |
+| `GET /v1/m/<mailboxId>/batches?after=<cursor>&limit=<1..100>` | — | `200 {"batches": [{"cursor": n, "blob": "<base64url>"}], "more": true\|false}` |
+
+- `cursor` is an integer that the relay gives to each stored blob. It starts at 1 and increases by 1
+  in each mailbox. `after` defaults to 0 and `limit` to 50.
+- The first `POST` to an unknown mailbox creates it and stores `SHA-256(relayToken)`. After that, a
+  request with a different token gets `403`. A `GET` on an unknown mailbox gets `200` with no batches.
+- Other errors: `400` for a bad mailbox id or a bad query, `413` for a body over the limit, `507` when
+  the mailbox is full (§10.4.5), `429` for too many requests. The client tries again later on `429`,
+  `5xx` and network errors, with a back-off from 5 s up to 5 min.
+
+#### 10.4.4 Sync with the relay
+
+The client keeps, for each group, `relayCursor` (the highest cursor it has read, starts at 0) and
+`relayVector`. `relayVector[author]` is the highest `n` such that the relay holds seq `1..n` of that
+author, as far as the client knows from the batches it read or sent. It starts empty.
+
+1. **Pull.** Read pages with `after = relayCursor` until `more` is false. For each blob, apply §10.4.2,
+   add its ops to `relayVector`, and set `relayCursor` to its cursor. Store the
+   cursor and the vector in the same transaction as the ops.
+2. **Push.** Take every op that the device holds with `seq > relayVector[author]` (§7 order). Send them
+   in batches. After each `201`, add the ops of that batch to `relayVector`.
+3. Pull always runs before push. A new device then sends only what the relay does not have.
+
+The client runs a relay sync when a group screen opens, after the user saves a change, and every
+60 s while the app is in the foreground and online. The relay sync and the nearby sessions run side
+by side: the op store ignores an op that it already holds (§8.3 step 4).
+
+#### 10.4.5 Limits and retention
+
+- A mailbox holds at most 20 000 blobs or 64 MiB. Then a `POST` gets `507`.
+- The relay deletes a mailbox 400 days after its last `POST`.
+- The relay may limit the request rate for each IP address and for each mailbox.
+
+#### 10.4.6 Privacy
+
+The relay sees the IP address of each client, the `mailboxId`, the size and the time of each request.
+From this it can tell how many devices use a group and when. It cannot read the group name, the
+members, the amounts or any other op content. Anyone who has the invite can derive the token and
+read the mailbox; this is the same rule as for nearby sync (§10.3).
+
+Vectors: `relay.json` (mailbox id, token, batch key, two blobs with fixed nonces, one tampered blob, and
+a pull-then-push run against the reference relay).
