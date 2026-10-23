@@ -261,8 +261,16 @@ def fold_cases():
     log.op(DEV_A, 40, "member.unclaim", {"memberId": M_CAN})
     log.op(DEV_A, 50, "member.claim", {"memberId": M_DENIZ})
     case("claims", log,
-         "B wins Ayşe (lower HLC); B moves to Can, which frees Ayşe for C; A cannot unclaim Can; "
+         "B wins Ayşe (lower HLC); B moves to Can, which frees Ayşe for C; A releases Can, which B held; "
          "A moves from Ali to Deniz.")
+
+    # 4b. A restored phone (new deviceId C) takes over the member that its old deviceId A held.
+    log = Log()
+    create(log)
+    log.op(DEV_C, 10, "member.unclaim", {"memberId": M_ALI})
+    log.op(DEV_C, 11, "member.claim", {"memberId": M_ALI})
+    case("takeover after restore", log,
+         "A holds Ali. C releases Ali, then claims Ali. C holds Ali and A holds nothing.")
 
     # 5. Invalid and unknown ops.
     log = Log()

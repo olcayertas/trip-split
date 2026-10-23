@@ -130,7 +130,10 @@ Validation is a pure function of the op. It does not read the group state, the c
    - `member.rename`: set the name if the member exists.
    - `member.claim(M)` by device D: if M exists, is not removed and `claimedBy` is null, then release
      the member D holds now (if any) and set `M.claimedBy = D`.
-   - `member.unclaim(M)` by D: if `M.claimedBy == D`, set it to null.
+   - `member.unclaim(M)` by any device: if `M.claimedBy` is not null, set it to null. The device that held
+     M then holds no member. Any device may release any claim, so a restored phone (new `deviceId`) can
+     free its old member and claim it again. A claim is not an access control: every member can already
+     edit and remove members.
    - `member.remove(M)`: if M exists and is not removed, set `removed = true` and release its claim.
    - `expense.add`: add the expense if the id is new (`deleted: false`, `createdBy: author`).
    - `expense.edit`: if the expense exists and is not deleted, overwrite each given field. `money` is
