@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 object Routes {
     const val GROUPS = "groups"
     const val CREATE = "create"
+    const val NEARBY = "nearby"
     const val GROUP = "group/{groupId}"
     const val EXPENSE = "group/{groupId}/expense?expenseId={expenseId}"
 
@@ -73,10 +74,12 @@ private fun AppNav(container: AppContainer, identity: DeviceIdentity) {
             GroupScreen(
                 repo, groupId, identity,
                 onBack = { nav.popBackStack() },
+                onNearby = { nav.navigate(Routes.NEARBY) },
                 onAddExpense = { nav.navigate(Routes.expense(groupId)) },
                 onEditExpense = { nav.navigate(Routes.expense(groupId, it)) },
             )
         }
+        composable(Routes.NEARBY) { NearbyScreen(container.nearby, onBack = { nav.popBackStack() }) }
         composable(Routes.EXPENSE) { entry ->
             val groupId = entry.arguments!!.getString("groupId")!!
             val expenseId = entry.arguments!!.getString("expenseId").orEmpty().ifEmpty { null }

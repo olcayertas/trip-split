@@ -113,4 +113,15 @@
     <string name="history_settlement_add">recorded a payment</string>
     <string name="history_settlement_delete">deleted a payment</string>
     <string name="history_someone">Someone</string>
+    <string name="nearby_title">Nearby</string>
+    <string name="nearby_searching">Looking for phones with your groups</string>
+    <string name="nearby_help">Keep this screen open on both phones. Both phones must use the same Wi-Fi, or one phone can share a hotspot. Some public Wi-Fi networks block phone-to-phone traffic (client isolation). Sync runs only while this screen is open.</string>
+    <string name="nearby_port">Listening on port %1$d</string>
+    <string name="nearby_no_peers">No phone found yet.</string>
+    <string name="nearby_clock_skew">A clock is more than a day ahead. Check the date and time on both phones.</string>
+    <string name="nearby_transport_wifi">Wi-Fi</string>
+    <string name="nearby_syncing">Syncing…</string>
+    <string name="nearby_waiting">Found. Waiting to sync.</string>
+    <string name="nearby_result_ok">Sent %1$d, received %2$d</string>
+    <string name="nearby_result_failed">Stopped: %1$s</string>
 </resources>

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -70,6 +71,7 @@ fun GroupScreen(
     groupId: String,
     identity: DeviceIdentity,
     onBack: () -> Unit,
+    onNearby: () -> Unit,
     onAddExpense: () -> Unit,
     onEditExpense: (String) -> Unit,
 ) {
@@ -84,6 +86,7 @@ fun GroupScreen(
             TopAppBar(
                 title = { Text(s?.group?.name ?: "…") },
                 navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
+                actions = { IconButton(onNearby) { Icon(Icons.Filled.Wifi, stringResource(R.string.nearby_title)) } },
             )
         },
         snackbarHost = { SnackbarHost(snack) },

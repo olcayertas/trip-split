@@ -3,6 +3,7 @@ package com.olcayertas.tripsplit
 import android.content.Context
 import com.olcayertas.tripsplit.core.Device
 import com.olcayertas.tripsplit.data.RoomOpStore
+import com.olcayertas.tripsplit.net.NearbyController
 import com.olcayertas.tripsplit.data.TripRepository
 import com.olcayertas.tripsplit.data.db.TripSplitDatabase
 import com.olcayertas.tripsplit.data.identity.DeviceIdentity
@@ -20,6 +21,9 @@ class AppContainer(context: Context) {
     val identity = CompletableDeferred<DeviceIdentity>()
     lateinit var repository: TripRepository
         private set
+
+    /** Sync while the Nearby screen is open. */
+    val nearby = NearbyController(context.applicationContext) { repository.device }
 
     suspend fun start() {
         val id = identityManager.ensure()

@@ -113,4 +113,15 @@
     <string name="history_settlement_add">bir ödeme kaydetti</string>
     <string name="history_settlement_delete">bir ödemeyi sildi</string>
     <string name="history_someone">Biri</string>
+    <string name="nearby_title">Yakındakiler</string>
+    <string name="nearby_searching">Gruplarını paylaşan telefonlar aranıyor</string>
+    <string name="nearby_help">Bu ekranı iki telefonda da açık tut. İki telefon aynı Wi-Fi ağında olmalı, ya da biri hotspot paylaşabilir. Bazı herkese açık Wi-Fi ağları telefonlar arası trafiği engeller (istemci yalıtımı). Eşitleme yalnızca bu ekran açıkken çalışır.</string>
+    <string name="nearby_port">%1$d portu dinleniyor</string>
+    <string name="nearby_no_peers">Henüz telefon bulunamadı.</string>
+    <string name="nearby_clock_skew">Bir saat bir günden fazla ileride. İki telefonda tarih ve saati kontrol et.</string>
+    <string name="nearby_transport_wifi">Wi-Fi</string>
+    <string name="nearby_syncing">Eşitleniyor…</string>
+    <string name="nearby_waiting">Bulundu. Eşitleme bekleniyor.</string>
+    <string name="nearby_result_ok">Gönderilen %1$d, alınan %2$d</string>
+    <string name="nearby_result_failed">Durdu: %1$s</string>
 </resources>
