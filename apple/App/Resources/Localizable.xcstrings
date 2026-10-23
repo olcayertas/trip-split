@@ -1421,12 +1421,12 @@
         }
       }
     },
-    "These expenses have exact amounts and stay as they are. Edit them by hand: %@.": {
+    "These expenses stay as they are (exact amounts or a full split). Edit them by hand: %@.": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bu harcamalarda tam tutarlar var ve olduğu gibi kalır. Elle düzenleyin: %@."
+            "value": "Bu harcamalar olduğu gibi kalır (tam tutarlar veya dolu bölüşüm). Elle düzenleyin: %@."
           }
         }
       }
