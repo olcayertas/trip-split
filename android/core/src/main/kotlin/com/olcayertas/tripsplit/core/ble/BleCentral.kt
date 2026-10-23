@@ -46,6 +46,7 @@ class BleCentralRunner(
     private val newConnection: () -> BleCentralConnection,
     private val timeouts: SessionTimeouts = SessionTimeouts.BLE,
     private val unfinishedMessageMs: Long = 15_000,
+    private val skipPeer: (peerDeviceId: String) -> Boolean = { false },
 ) {
     suspend fun run(address: String, forceCentral: Boolean = false): CentralResult {
         val localGroups = device.store.groups()
@@ -92,6 +93,7 @@ class BleCentralRunner(
             val info = parseInfo(setup.info) ?: return Attempt.Fail("bad info")
             val decision = centralDecision(device.deviceId, localGroups, info, force)
             val groups = (decision as? CentralDecision.Go)?.groups ?: return Attempt.Skip(decision, info.deviceId)
+            if (only == null && skipPeer(info.deviceId)) return Attempt.Skip(CentralDecision.PreferOtherTransport, info.deviceId)
             val group = only ?: groups.first()
             val ownLimit = chunkSizeForMtu(setup.mtu)
             val l = BleLink(conn, receiveLimit = ownLimit, scope = scope, isPeripheral = false,

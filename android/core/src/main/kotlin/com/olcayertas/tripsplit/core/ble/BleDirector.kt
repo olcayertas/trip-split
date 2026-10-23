@@ -48,10 +48,15 @@ class BleDirector(
     private val skippedWaitMs: Long = 60_000,
     private val failedWaitMs: Long = 10_000,
     private val yieldWaitMs: Long = YIELD_WAIT_MS,
+    /** Share one instance with the LAN director, so SPEC §8.3 step 7 holds across transports. */
+    private val admission: SessionAdmission = SessionAdmission(),
+    /** True for a peer that Wi-Fi reaches: BLE leaves it alone (PLAN §9.2). */
+    private val skipPeer: (peerDeviceId: String) -> Boolean = { false },
+    /** How long to wait before the next look at a peer that Wi-Fi serves. */
+    private val preferOtherWaitMs: Long = 10_000,
 ) {
     private class Seen(var nextAllowed: Long = 0, var force: Boolean = false, var peer: String? = null)
 
-    private val admission = SessionAdmission()
     private val seen = HashMap<String, Seen>()
     private val lock = Any()
     private val outcomes = HashMap<String, Pair<SessionOutcome, Long>>()
@@ -91,7 +96,7 @@ class BleDirector(
         } ?: return
         val address = next.key
         val entry = next.value
-        val runner = BleCentralRunner(device, admission, scope, centralFactory)
+        val runner = BleCentralRunner(device, admission, scope, centralFactory, skipPeer = skipPeer)
         publish(syncingAddress = address)
         val result = runner.run(address, entry.force)
         val t = now()
@@ -106,7 +111,10 @@ class BleDirector(
                 }
                 is CentralResult.Skipped -> {
                     entry.peer = result.peerDeviceId
-                    if (result.decision == CentralDecision.YieldToPeer) {
+                    if (result.decision == CentralDecision.PreferOtherTransport) {
+                        // Wi-Fi reaches this peer. Look again later, in case Wi-Fi goes away.
+                        entry.nextAllowed = t + preferOtherWaitMs
+                    } else if (result.decision == CentralDecision.YieldToPeer) {
                         // The peer is central. If no session from it starts in 15 s, connect again and act as central.
                         entry.nextAllowed = t + yieldWaitMs
                         entry.force = true

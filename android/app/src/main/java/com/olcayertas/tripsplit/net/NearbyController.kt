@@ -4,7 +4,9 @@ import android.content.Context
 import com.olcayertas.tripsplit.core.Device
 import com.olcayertas.tripsplit.core.ble.BleDirector
 import com.olcayertas.tripsplit.core.lan.LanDirector
+import com.olcayertas.tripsplit.core.SessionAdmission
 import com.olcayertas.tripsplit.core.lan.NearbyState
+import com.olcayertas.tripsplit.core.lan.mergePeers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,13 +39,16 @@ class NearbyController(private val context: Context, private val device: () -> D
         val s = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         scope = s
         val d = device()
-        val l = LanDirector(d, NsdDiscovery(context), { defaultGateway(context) }, s)
+        // One admission for both transports: two sessions with one peer for one group are one too many (SPEC §8.3).
+        val admission = SessionAdmission()
+        val l = LanDirector(d, NsdDiscovery(context), { defaultGateway(context) }, s, admission = admission)
         lan = l
         val status = BlePermissions.status(context)
         _ble.value = status
         val adapter = BlePermissions.adapter(context)
         val b = if (status == BleStatus.READY && adapter != null) {
-            BleDirector(d, AndroidBleScanner(adapter), AndroidBleHost(context, adapter), { AndroidGattCentral(context, adapter) }, s)
+            BleDirector(d, AndroidBleScanner(adapter), AndroidBleHost(context, adapter), { AndroidGattCentral(context, adapter) }, s,
+                admission = admission, skipPeer = { id -> id in l.knownPeerIds() })
         } else {
             null
         }
@@ -52,7 +57,7 @@ class NearbyController(private val context: Context, private val device: () -> D
             val bleFlow = b?.state ?: MutableStateFlow(NearbyState())
             combine(l.state, bleFlow) { a, c ->
                 a.copy(
-                    peers = a.peers + c.peers,
+                    peers = mergePeers(a.peers, c.peers),
                     lastOutcome = c.lastOutcome ?: a.lastOutcome,
                     clockSkew = a.clockSkew || c.clockSkew,
                 )
