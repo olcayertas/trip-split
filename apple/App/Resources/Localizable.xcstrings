@@ -321,6 +321,26 @@
         }
       }
     },
+    "Bluetooth is not allowed. Allow it for TripSplit in Settings.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bluetooth'a izin verilmemiş. Ayarlar'dan TripSplit için izin verin."
+          }
+        }
+      }
+    },
+    "Bluetooth is off. Turn it on to find phones by Bluetooth.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bluetooth kapalı. Telefonları Bluetooth ile bulmak için açın."
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "tr": {
@@ -1041,12 +1061,12 @@
         }
       }
     },
-    "Sync works while this screen is open on both phones. Phones must be on the same Wi-Fi network or hotspot. Some hotel networks block this. Then use a phone hotspot.": {
+    "Sync works while this screen is open on both phones. Phones must be on the same Wi-Fi network or hotspot, or close to each other with Bluetooth. Some hotel networks block Wi-Fi sync. Then use a phone hotspot or Bluetooth.": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Eşitleme bu ekran iki telefonda da açıkken çalışır. Telefonlar aynı Wi-Fi ağında veya hotspot'ta olmalı. Bazı otel ağları buna izin vermez. Bu durumda telefon hotspot'u kullanın."
+            "value": "Eşitleme bu ekran iki telefonda da açıkken çalışır. Telefonlar aynı Wi-Fi ağında veya hotspot'ta ya da Bluetooth ile birbirine yakın olmalı. Bazı otel ağları Wi-Fi eşitlemeyi engeller. Bu durumda telefon hotspot'u veya Bluetooth kullanın."
           }
         }
       }

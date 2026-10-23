@@ -51,7 +51,7 @@ struct NearbyView: View {
             }
             .m3Row()
             if let problem = coordinator.problem {
-                Label("Network problem. Check that TripSplit may use the local network in Settings.", systemImage: "exclamationmark.triangle.fill")
+                Label(problemText(problem), systemImage: "exclamationmark.triangle.fill")
                     .m3(M3Type.bodyMedium).foregroundStyle(M3Color.error).m3Row()
                     .accessibilityHint(problem)
             }
@@ -85,9 +85,15 @@ struct NearbyView: View {
             Section("Last sync") { Text(last).m3(M3Type.bodyMedium).monospacedDigit().m3Row() }
         }
         Section {
-            Text("Sync works while this screen is open on both phones. Phones must be on the same Wi-Fi network or hotspot. Some hotel networks block this. Then use a phone hotspot.")
+            Text("Sync works while this screen is open on both phones. Phones must be on the same Wi-Fi network or hotspot, or close to each other with Bluetooth. Some hotel networks block Wi-Fi sync. Then use a phone hotspot or Bluetooth.")
                 .m3(M3Type.bodySmall).foregroundStyle(M3Color.onSurfaceVariant).m3Row()
         }
+    }
+
+    private func problemText(_ problem: String) -> String {
+        if problem.contains("Bluetooth permission") { return String(localized: "Bluetooth is not allowed. Allow it for TripSplit in Settings.") }
+        if problem.contains("Bluetooth is off") { return String(localized: "Bluetooth is off. Turn it on to find phones by Bluetooth.") }
+        return String(localized: "Network problem. Check that TripSplit may use the local network in Settings.")
     }
 
     private func label(for row: SyncCoordinator.Row) -> String {

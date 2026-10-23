@@ -45,7 +45,7 @@ final class AppModel {
             let repo = GroupRepository(database: database, identity: identity)
             repo.start()
             repository = repo
-            coordinator = SyncCoordinator(repository: repo, transports: [LANTransport()])
+            coordinator = SyncCoordinator(repository: repo, transports: [LANTransport(), BLETransport()])
             #if DEBUG
             if args.contains("-seed-demo") || args.contains("-demo-fixed") {
                 let fixed = args.contains("-demo-fixed")
