@@ -1,0 +1,79 @@
+# Release lanes for TripSplit. Run through `bundle exec fastlane ios <lane>` from apple/.
+# Secrets come from apple/fastlane/.env (git-ignored). This file never prints them.
+
+default_platform(:ios)
+
+APP_ID = "com.olcayertas.TripSplit"
+TEAM_ID = "SNZ29V4PJZ"
+PROJECT = "TripSplit.xcodeproj"
+SCHEME = "TripSplit"
+
+platform :ios do
+  # Build the ASC API key hash from the env vars. Fails with a clear message, no values.
+  def asc_api_key
+    missing = %w[ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH].select { |k| ENV[k].to_s.empty? }
+    UI.user_error!("Missing env vars: #{missing.join(', ')}. See fastlane/.env.example.") unless missing.empty?
+    key_path = File.expand_path(ENV["ASC_KEY_PATH"])
+    UI.user_error!("ASC_KEY_PATH does not point to a file.") unless File.file?(key_path)
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: key_path,
+      in_house: false
+    )
+  end
+
+  desc "Read-only check: the ASC key loads, the app record exists. Prints version and build."
+  lane :inspect do
+    api_key = asc_api_key
+    UI.success("ASC API key loaded.")
+    UI.message("Bundle id: #{APP_ID}, team: #{TEAM_ID}")
+    begin
+      build = latest_testflight_build_number(api_key: api_key, app_identifier: APP_ID)
+      UI.success("Latest TestFlight build: #{build}")
+    rescue StandardError => e
+      UI.important("Could not read TestFlight builds: #{e.class}. Does the app record exist?")
+    end
+    if File.exist?("project.yml")
+      version = File.read("project.yml")[/MARKETING_VERSION:\s*"?([\d.]+)"?/, 1]
+      UI.message("Marketing version in project.yml: #{version || 'not found'}")
+    else
+      UI.important("apple/project.yml not found. The iOS track has not added it yet.")
+    end
+  end
+
+  desc "Build a Release archive and upload it to TestFlight (internal testers)."
+  lane :beta do
+    api_key = asc_api_key
+    sh("xcodegen", "generate") if File.exist?("project.yml")
+
+    build_number = latest_testflight_build_number(api_key: api_key, app_identifier: APP_ID) + 1
+    UI.message("Next build number: #{build_number}")
+
+    # The same xcargs reach both the archive and the export step (known gym trap).
+    auth_args = [
+      "-allowProvisioningUpdates",
+      "-authenticationKeyPath #{File.expand_path(ENV['ASC_KEY_PATH'])}",
+      "-authenticationKeyID #{ENV['ASC_KEY_ID']}",
+      "-authenticationKeyIssuerID #{ENV['ASC_ISSUER_ID']}",
+      "CURRENT_PROJECT_VERSION=#{build_number}"
+    ].join(" ")
+
+    build_app(
+      project: PROJECT,
+      scheme: SCHEME,
+      configuration: "Release",
+      export_method: "app-store",
+      export_team_id: TEAM_ID,
+      output_directory: "build",
+      xcargs: auth_args,
+      export_xcargs: "-allowProvisioningUpdates"
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      app_identifier: APP_ID,
+      skip_waiting_for_build_processing: true
+    )
+  end
+end
