@@ -1,0 +1,32 @@
+name: Relay
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "relay/**"
+      - "protocol/vectors/relay.json"
+      - ".github/workflows/relay.yml"
+  pull_request:
+    paths:
+      - "relay/**"
+      - "protocol/vectors/relay.json"
+      - ".github/workflows/relay.yml"
+
+jobs:
+  worker:
+    name: Worker tests (Miniflare)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: relay
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: relay/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test

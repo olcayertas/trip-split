@@ -7,7 +7,7 @@
   <a href="https://github.com/olcayertas/trip-split/actions/workflows/ios.yml"><img alt="iOS CI" src="https://github.com/olcayertas/trip-split/actions/workflows/ios.yml/badge.svg"></a>
   <img alt="iOS 18+" src="https://img.shields.io/badge/iOS-18%2B-006a65?logo=apple&logoColor=white">
   <img alt="Android" src="https://img.shields.io/badge/Android-Compose-006a65?logo=android&logoColor=white">
-  <img alt="Servers" src="https://img.shields.io/badge/servers-0-49607b">
+  <img alt="Relay" src="https://img.shields.io/badge/relay-optional%20%C2%B7%20encrypted%20only-49607b">
   <img alt="Accounts" src="https://img.shields.io/badge/accounts-0-49607b">
 </p>
 
@@ -16,8 +16,9 @@
 You are in a cave hotel in Cappadocia. Ayşe paid for breakfast. Ali paid for the hotel. Mehmet paid
 for the balloon. Zeynep paid for a taxi in Turkish lira. There is no signal.
 
-**TripSplit keeps the list, and it says who pays whom at the end.** It needs no internet, no server and
-no account. The phones in the group talk to each other directly.
+**TripSplit keeps the list, and it says who pays whom at the end.** It needs no internet and no
+account. The phones in the group talk to each other directly. An optional relay can carry encrypted
+changes between phones that are far apart. It stores only data that it cannot read.
 
 ## ✨ What it does
 
@@ -25,6 +26,7 @@ no account. The phones in the group talk to each other directly.
 |---|---|
 | 📴 **Works offline** | Everything stays on your phones. Airplane mode is fine. |
 | 📡 **Syncs nearby** | Phones sync over the same Wi-Fi, a phone hotspot or Bluetooth. |
+| 🌍 **Syncs far away** | An optional relay passes encrypted changes between phones in different places. You can switch it off. |
 | 🧾 **Anyone adds** | Every member can add and edit expenses. Nobody is "the accountant". |
 | ⚖️ **Fair splits** | Split equally, by exact amounts, or by weights ("Mehmet ate for two"). |
 | 💱 **Many currencies** | Pay in lira, see the total in euros. You set the rate. |
@@ -74,12 +76,14 @@ flowchart LR
     A -. "encrypted" .-> C
 ```
 
-- **No server, so no single truth.** Each phone keeps an append-only log of changes. When two phones
+- **No central server, so no single truth.** Each phone keeps an append-only log of changes. When two phones
   meet, each sends the changes that the other phone does not have yet.
 - **Same log, same result.** The log is a CRDT. Every phone that has the same changes shows the same
   balances, in any order of arrival.
 - **Only your group can read it.** The QR invite holds a secret group key. Every sync session is
-  encrypted with AES-GCM and a fresh key from that group key.
+  encrypted with AES-GCM and a fresh key from that group key. The relay holds only encrypted batches.
+  It never has the key. It sees the IP address, the size and the time of each request, and nothing more
+  (SPEC §10.4.6).
 - **Money is exact.** Amounts are whole minor units (cents). Rounding is half-even, and the last cent
   always goes to somebody in a fixed, fair order. The balances always add up to zero.
 

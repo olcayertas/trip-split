@@ -22,7 +22,7 @@
   <!-- title -->
   <text x="90" y="160" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="96" font-weight="800" fill="#f4fbf9" letter-spacing="-2">TripSplit</text>
   <text x="94" y="218" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#9df1eb">Split the bill. Not the friendship.</text>
-  <text x="94" y="262" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="22" fill="#d0e4ff">Offline · No server · No account · iPhone + Android</text>
+  <text x="94" y="262" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="22" fill="#d0e4ff">Offline · No account · Encrypted relay (optional) · iPhone + Android</text>
 
   <!-- receipt card -->
   <g transform="translate(830 150) rotate(6)">
