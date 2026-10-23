@@ -123,7 +123,7 @@ class Device(
         }
         if (bad) accepted.clear()
         val state = store.relayState(groupId)
-        val relay = RelayState(maxOf(state.cursor, cursor), if (bad) state.vector else advanceRelayVector(state.vector, accepted))
+        val relay = state.copy(cursor = maxOf(state.cursor, cursor), vector = if (bad) state.vector else advanceRelayVector(state.vector, accepted))
         val clock = clockLocked()
         val next = Hlc(deviceId, clock.millis, clock.counter)
         var skew = false

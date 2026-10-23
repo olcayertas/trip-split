@@ -43,8 +43,10 @@ class HttpRelayApiTest {
 
     @Test
     fun pushSendsTheBlobWithTheBearerTokenAndReadsTheCursor() = runBlocking {
-        status = 201; answer = """{"cursor": 7}"""
-        assertEquals(7L, api.push("m".repeat(32), "tok", byteArrayOf(1, 2, 3)))
+        status = 201; answer = """{"cursor": 7, "epoch": "${"a".repeat(32)}"}"""
+        val posted = api.push("m".repeat(32), "tok", byteArrayOf(1, 2, 3))
+        assertEquals(7L, posted.cursor)
+        assertEquals("a".repeat(32), posted.epoch)
         assertEquals("POST /v1/m/${"m".repeat(32)}/batches", lastRequest)
         assertEquals("Bearer tok", lastAuth)
         assertEquals("application/octet-stream", lastType)
@@ -54,12 +56,19 @@ class HttpRelayApiTest {
     @Test
     fun pullReadsBatchesAndMore() = runBlocking {
         val blob = Base64.getUrlEncoder().withoutPadding().encodeToString(byteArrayOf(9, 8, 7))
-        status = 200; answer = """{"batches":[{"cursor":4,"blob":"$blob"}],"more":true}"""
+        status = 200; answer = """{"epoch":"${"b".repeat(32)}","batches":[{"cursor":4,"blob":"$blob"}],"more":true}"""
         val page = api.pull("m".repeat(32), "tok", 3, 50)
         assertEquals("GET /v1/m/${"m".repeat(32)}/batches?after=3&limit=50", lastRequest)
         assertEquals(4L, page.batches.single().cursor)
         assertContentEquals(byteArrayOf(9, 8, 7), page.batches.single().blob)
         assertTrue(page.more)
+        assertEquals("b".repeat(32), page.epoch)
+    }
+
+    @Test
+    fun anUnknownMailboxHasANullEpoch() = runBlocking {
+        status = 200; answer = """{"epoch":null,"batches":[],"more":false}"""
+        assertEquals(null, api.pull("m".repeat(32), "tok", 0, 50).epoch)
     }
 
     private fun failureFor(code: Int): RelayFailure = runBlocking {
