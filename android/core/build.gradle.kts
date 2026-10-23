@@ -10,10 +10,12 @@ kotlin {
 
 dependencies {
     api(libs.kotlinx.serialization.json)
+    api(libs.kotlinx.coroutines.core)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(kotlin("test"))
+    testImplementation(libs.kotlinx.coroutines.test)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
