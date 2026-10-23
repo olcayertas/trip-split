@@ -165,4 +165,8 @@
     <string name="join_open_nearby">Yakındakiler\'i aç</string>
     <string name="scan_need_camera">QR kodunu okutmak için TripSplit kameraya ihtiyaç duyar. Görüntü telefonunda kalır.</string>
     <string name="scan_allow_camera">Kameraya izin ver</string>
+    <string name="settings_title">Ayarlar</string>
+    <string name="relay_switch">İnternet üzerinden eşitle</string>
+    <string name="relay_explain">Telefonun şifreli değişiklikleri bir aktarma sunucusuna gönderir. Sunucu IP adresini ve eşitleme zamanını görür. İsimleri, tutarları ve grubu okuyamaz.</string>
+    <string name="relay_not_set_up">Henüz kurulmadı</string>
 </resources>

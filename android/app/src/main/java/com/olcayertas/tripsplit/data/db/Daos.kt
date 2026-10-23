@@ -46,6 +46,9 @@ interface GroupDao {
 
     @Query("UPDATE groups SET last_used_at = :at WHERE group_id = :groupId")
     suspend fun touch(groupId: String, at: Long)
+
+    @Query("UPDATE groups SET relay_cursor = :cursor, relay_vector = :vector WHERE group_id = :groupId")
+    suspend fun setRelay(groupId: String, cursor: Long, vector: String)
 }
 
 @Dao

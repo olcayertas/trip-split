@@ -19,6 +19,9 @@ private val MAGIC = byteArrayOf('T'.code.toByte(), 'S'.code.toByte(), '1'.code.t
 /** A frame or record that breaks SPEC §8.1. The session closes. */
 class WireException(message: String) : Exception(message)
 
+/** HMAC-SHA256. */
+fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray = hmac(key, data)
+
 private fun hmac(key: ByteArray, data: ByteArray): ByteArray {
     val mac = Mac.getInstance("HmacSHA256")
     // An empty HKDF salt is legal (RFC 5869). SecretKeySpec rejects an empty key, so use one zero byte:

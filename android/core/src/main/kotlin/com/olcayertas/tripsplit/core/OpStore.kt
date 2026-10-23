@@ -13,6 +13,12 @@ data class ClockState(val millis: Long = 0, val counter: Int = 0)
 /** An op that arrived with an `(author, seq)` the device holds with another hash (SPEC §4.2). */
 data class Fork(val groupId: String, val author: String, val seq: Long, val foreignHash: String)
 
+/**
+ * SPEC §10.4.4. [cursor] is the highest relay cursor the device has read. [vector] maps an author to the
+ * highest `n` such that the relay holds seq `1..n` of that author, as far as the device knows.
+ */
+data class RelayState(val cursor: Long = 0, val vector: Map<String, Long> = emptyMap())
+
 class StoreResult(val stored: List<JsonObject>, val skipped: Int, val forks: List<Fork>)
 
 /**
@@ -40,6 +46,23 @@ interface OpStore {
 
     suspend fun forks(groupId: String): List<Fork>
 
+    /** The relay position of a group. Empty for a group that never synced with the relay. */
+    suspend fun relayState(groupId: String): RelayState
+
+    /** Writes the relay position alone, after a push. */
+    suspend fun saveRelayState(groupId: String, state: RelayState)
+
+    /**
+     * Like [insert], and in the same transaction it saves [relay]. A crash cannot leave the cursor ahead of
+     * the ops that it covers (SPEC §10.4.4 step 1). [ops] can be empty: the cursor moves past a bad blob.
+     */
+    suspend fun insertFromRelay(
+        groupId: String,
+        ops: List<JsonObject>,
+        relay: RelayState,
+        clockAfter: (stored: List<JsonObject>) -> ClockState?,
+    ): StoreResult
+
     suspend fun vector(groupId: String): Map<String, Long> = versionVector(ops(groupId))
 
     suspend fun missingFor(groupId: String, peerVector: Map<String, Long>): List<JsonObject> {
@@ -59,6 +82,7 @@ class InMemoryOpStore : OpStore {
     private val byGroup = HashMap<String, LinkedHashMap<Pair<String, Long>, JsonObject>>()
     private val forkList = ArrayList<Fork>()
     private var clock = ClockState()
+    private val relayStates = HashMap<String, RelayState>()
 
     override suspend fun groups(): List<GroupKey> = synchronized(lock) { groupKeys.values.toList() }
 
@@ -73,11 +97,34 @@ class InMemoryOpStore : OpStore {
 
     override suspend fun clock(): ClockState = synchronized(lock) { clock }
 
+    override suspend fun relayState(groupId: String): RelayState = synchronized(lock) { relayStates[groupId] ?: RelayState() }
+
+    override suspend fun saveRelayState(groupId: String, state: RelayState) {
+        synchronized(lock) { relayStates[groupId] = state }
+    }
+
+    override suspend fun insertFromRelay(
+        groupId: String,
+        ops: List<JsonObject>,
+        relay: RelayState,
+        clockAfter: (List<JsonObject>) -> ClockState?,
+    ): StoreResult = synchronized(lock) {
+        val result = insertLocked(groupId, ops, clockAfter)
+        relayStates[groupId] = relay
+        result
+    }
+
     override suspend fun insert(
         groupId: String,
         ops: List<JsonObject>,
         clockAfter: (List<JsonObject>) -> ClockState?,
-    ): StoreResult = synchronized(lock) {
+    ): StoreResult = synchronized(lock) { insertLocked(groupId, ops, clockAfter) }
+
+    private fun insertLocked(
+        groupId: String,
+        ops: List<JsonObject>,
+        clockAfter: (List<JsonObject>) -> ClockState?,
+    ): StoreResult {
         val map = byGroup.getOrPut(groupId) { LinkedHashMap() }
         val stored = ArrayList<JsonObject>()
         val forks = ArrayList<Fork>()
@@ -96,7 +143,7 @@ class InMemoryOpStore : OpStore {
         }
         for (f in forks) if (forkList.none { it == f }) forkList.add(f)
         clockAfter(stored)?.let { clock = it }
-        StoreResult(stored, skipped, forks)
+        return StoreResult(stored, skipped, forks)
     }
 
     override suspend fun forks(groupId: String): List<Fork> =
