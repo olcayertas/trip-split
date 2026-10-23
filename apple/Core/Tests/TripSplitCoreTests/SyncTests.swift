@@ -519,3 +519,23 @@ struct DraftTests {
         #expect(h.contains { $0.type == "expense.add" && $0.text == "Bread" })
     }
 }
+
+@Suite("Lost claims")
+struct LostClaimTests {
+    @Test func detectsAClaimThatAnotherDeviceWon() {
+        let me = "bbbbbbbb-0000-4000-8000-000000000002", other = "aaaaaaaa-0000-4000-8000-000000000001"
+        let member = "20000000-0000-4000-8000-000000000002"
+        var w1 = Writer(device: other), w2 = Writer(device: me)
+        let ops: [JSONValue] = [
+            w1.op(type: "group.create", body: .object(["name": .string("T"), "baseCurrency": .string("EUR"),
+                "creatorMemberId": .string("10000000-0000-4000-8000-000000000001"), "creatorName": .string("A")]), wall: 1_000),
+            w1.op(type: "member.add", body: .object(["memberId": .string(member), "name": .string("Ayşe")]), wall: 1_001),
+            w1.op(type: "member.claim", body: .object(["memberId": .string(member)]), wall: 1_002),
+            w2.op(type: "member.claim", body: .object(["memberId": .string(member)]), wall: 1_003),
+        ]
+        let state = GroupState(foldResult: fold(groupId: groupId, ops: ops))
+        let lost = lostClaim(history: historyEntries(ops: ops), deviceId: me, state: state)
+        #expect(lost?.id == member)
+        #expect(lostClaim(history: historyEntries(ops: ops), deviceId: other, state: state) == nil)
+    }
+}

@@ -9,6 +9,8 @@ struct MembersTab: View {
     @State private var renaming: GroupState.Member?
     @State private var removing: GroupState.Member?
     @State private var claimFailed = false
+    @State private var inviting = false
+    @State private var lostMember: GroupState.Member?
 
     private var state: GroupState { repository.state(of: groupId) }
     private var mine: GroupState.Member? { repository.myMember(in: groupId) }
@@ -44,7 +46,18 @@ struct MembersTab: View {
                         .foregroundStyle(M3Color.error)
                 }
             }
+            if let lostMember {
+                Section {
+                    Label("Your claim of \(lostMember.name) did not count: another phone claimed it first. Choose another member or add a new one.",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .m3(M3Type.bodyMedium).foregroundStyle(M3Color.error).m3Row()
+                }
+            }
             Section {
+                Button { inviting = true } label: { Label("Invite", systemImage: "qrcode") }
+                    .buttonStyle(M3TextButtonStyle())
+                    .accessibilityIdentifier("invite")
+                    .m3Row()
                 Button { adding = true } label: { Label("Add member", systemImage: "person.badge.plus") }
                     .buttonStyle(M3TextButtonStyle())
                     .accessibilityIdentifier("addMember")
@@ -67,6 +80,11 @@ struct MembersTab: View {
             }
         }
         .m3Screen()
+        .task(id: state.members) {
+            let history = (try? await repository.history(of: groupId)) ?? []
+            lostMember = lostClaim(history: history, deviceId: repository.deviceId, state: state)
+        }
+        .sheet(isPresented: $inviting) { InviteView(repository: repository, groupId: groupId) }
         .sheet(isPresented: $adding) {
             NameSheet(title: "Add member", initial: "", confirm: "Add") { name in
                 Task { _ = try? await repository.append(groupId: groupId, type: "member.add", body: .object([

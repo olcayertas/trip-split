@@ -5,7 +5,11 @@ import TripSplitStore
 struct GroupView: View {
     let repository: GroupRepository
     let groupId: String
+    var openNearby = false
     @State private var tab = Tab.expenses
+    @State private var showNearby = false
+    @State private var claiming = false
+    @State private var claimAsked = false
 
     enum Tab: Hashable { case expenses, balances, members }
 
@@ -24,6 +28,19 @@ struct GroupView: View {
                 .tag(Tab.members)
         }
         .tint(M3Color.primary)
+        .safeAreaInset(edge: .top) {
+            if state.group == nil { waitingBanner }
+        }
+        .navigationDestination(isPresented: $showNearby) { NearbyView(repository: repository, groupId: groupId) }
+        .sheet(isPresented: $claiming) { ClaimSheet(repository: repository, groupId: groupId) }
+        .task { if openNearby { showNearby = true } }
+        // When the log arrives and this phone has no member yet, ask who the user is (once).
+        .onChange(of: state.group?.name) {
+            if state.group != nil, repository.myMember(in: groupId) == nil, !claimAsked {
+                claimAsked = true
+                claiming = true
+            }
+        }
         .navigationTitle(state.group?.name ?? String(localized: "Group"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -43,6 +60,20 @@ struct GroupView: View {
                 }
             }
         }
+    }
+}
+
+extension GroupView {
+    fileprivate var waitingBanner: some View {
+        M3Card {
+            VStack(alignment: .leading, spacing: M3Spacing.s) {
+                Label("Waiting for the first sync", systemImage: "arrow.triangle.2.circlepath").m3(M3Type.titleMedium)
+                Text("Open Nearby on this phone and on a phone of the group. The expenses arrive when the phones find each other.")
+                    .m3(M3Type.bodyMedium).foregroundStyle(M3Color.onSurfaceVariant)
+                Button("Open Nearby") { showNearby = true }.buttonStyle(M3TonalButtonStyle())
+            }
+        }
+        .padding(M3Spacing.l)
     }
 }
 
