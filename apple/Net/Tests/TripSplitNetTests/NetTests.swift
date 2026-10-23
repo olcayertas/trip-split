@@ -9,12 +9,12 @@ struct HelperTests {
     @Test func tagsInTXT() {
         let key = (0..<32).map { UInt8($0) }
         let tag = SyncCrypto.discoveryTag(groupKey: key)
-        #expect(tagText(tag) == "cD1Uns6S4tRX8--c")
+        #expect(tagText(tag) == "703d549ece92e2d457f3ef9c")
         let text = Advert.encodeTags([tag, tag])
-        #expect(Advert.decodeTags(text) == ["cD1Uns6S4tRX8--c", "cD1Uns6S4tRX8--c"])
-        #expect(Advert.decodeTags("short,cD1Uns6S4tRX8--c,!!!!!!!!!!!!!!!!") == ["cD1Uns6S4tRX8--c"])
+        #expect(Advert.decodeTags(text) == ["703d549ece92e2d457f3ef9c", "703d549ece92e2d457f3ef9c"])
+        #expect(Advert.decodeTags("short,703d549ece92e2d457f3ef9c,703D549ECE92E2D457F3EF9C") == ["703d549ece92e2d457f3ef9c"])
         #expect(Advert.decodeTags("").isEmpty)
-        #expect(Advert.encodeTags(Array(repeating: tag, count: 30)).utf8.count <= 255)
+        #expect(Advert.encodeTags(Array(repeating: tag, count: 30)).utf8.count <= Advert.maxTagValueBytes)
     }
 
     @Test func gatewayGuess() {

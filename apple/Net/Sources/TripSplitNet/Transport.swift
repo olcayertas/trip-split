@@ -51,18 +51,31 @@ public enum TransportError: Error, Equatable {
     case failed(String)
 }
 
-/// Text form of a tag in TXT records and info characteristics: 16 base64url characters.
-public func tagText(_ tag: [UInt8]) -> String { Base64URL.encode(tag) }
+/// Text form of a tag in TXT records and `info` values: 24 lowercase hex characters (SPEC §10.1.1).
+public func tagText(_ tag: [UInt8]) -> String {
+    let digits = Array("0123456789abcdef".utf8)
+    var out: [UInt8] = []
+    for b in tag {
+        out.append(digits[Int(b >> 4)])
+        out.append(digits[Int(b & 15)])
+    }
+    return String(decoding: out, as: UTF8.self)
+}
 
-/// The TXT record values of the LAN service (proposal for SPEC §10).
+/// The TXT record of the LAN service (SPEC §10.1.1).
 public enum Advert {
-    public static let maxTags = 14
+    public static let maxTags = 8
+    public static let maxTagValueBytes = 199
 
+    /// At most 8 tags, joined with ",". The caller passes the groups used last first.
     public static func encodeTags(_ tags: [[UInt8]]) -> String {
         tags.prefix(maxTags).map(tagText).joined(separator: ",")
     }
 
+    /// Ignores a tag that is not 24 lowercase hex characters.
     public static func decodeTags(_ text: String) -> [String] {
-        text.split(separator: ",").map(String.init).filter { $0.utf8.count == 16 && Base64URL.decode($0)?.count == 12 }
+        text.split(separator: ",").map(String.init).filter { t in
+            t.utf8.count == 24 && t.utf8.allSatisfy { (0x30...0x39).contains($0) || (0x61...0x66).contains($0) }
+        }
     }
 }

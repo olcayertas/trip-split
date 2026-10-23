@@ -16,6 +16,7 @@ public final class LANTransport: PeerTransport, @unchecked Sendable {
     private let port: UInt16
     private let advertise: Bool
     private let probeDelay: TimeInterval
+    private let probeInterval: TimeInterval
     private let loopbackOnly: Bool
 
     // Everything below is touched only on `queue`.
@@ -30,7 +31,8 @@ public final class LANTransport: PeerTransport, @unchecked Sendable {
 
     /// `port`: 47831 in the app, 0 in tests. `advertise`: false in tests that do not need Bonjour.
     public init(port: UInt16 = LANTransport.fixedPort, advertise: Bool = true, probeDelay: TimeInterval = 5,
-                loopbackOnly: Bool = false) {
+                probeInterval: TimeInterval = 15, loopbackOnly: Bool = false) {
+        self.probeInterval = probeInterval
         self.loopbackOnly = loopbackOnly
         self.port = port
         self.advertise = advertise
@@ -47,7 +49,7 @@ public final class LANTransport: PeerTransport, @unchecked Sendable {
                 self.deviceId = deviceId
                 self.startListeners(tags: tags)
                 if self.advertise { self.startBrowser() }
-                self.scheduleProbe()
+                self.scheduleProbe(after: self.probeDelay)
                 done.resume()
             }
         }
@@ -88,27 +90,41 @@ public final class LANTransport: PeerTransport, @unchecked Sendable {
 
     // MARK: Listening
 
-    private func startListeners(tags: [[UInt8]]) {
-        // Listener with the fixed port. It can fail when another process holds the port; that is not fatal.
-        let parameters = NWParameters.tcp
-        if loopbackOnly {
-            parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port: NWEndpoint.Port(rawValue: port) ?? .any)
-        }
-        let fixed = loopbackOnly ? try? NWListener(using: parameters) : NWEndpoint.Port(rawValue: port).flatMap { try? NWListener(using: .tcp, on: $0) }
-        if let l = fixed { attach(l, announceTags: nil) }
-        if advertise, let l = try? NWListener(using: .tcp) {
-            attach(l, announceTags: tags)
-        }
+    private static func parameters() -> NWParameters {
+        let tcp = NWProtocolTCP.Options()
+        tcp.noDelay = true
+        return NWParameters(tls: nil, tcp: tcp)
     }
 
-    private func attach(_ listener: NWListener, announceTags tags: [[UInt8]]?) {
-        if let tags {
+    /// One listener: port 47831 first, any free port when that one is busy (SPEC §10.1.1). The Bonjour
+    /// service uses the port that was bound.
+    private func startListeners(tags: [[UInt8]]) {
+        startListener(tags: tags, wantedPort: port)
+    }
+
+    private func startListener(tags: [[UInt8]], wantedPort: UInt16) {
+        let parameters = Self.parameters()
+        if loopbackOnly {
+            parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port: NWEndpoint.Port(rawValue: wantedPort) ?? .any)
+        }
+        let listener: NWListener
+        do {
+            if !loopbackOnly, wantedPort != 0, let p = NWEndpoint.Port(rawValue: wantedPort) {
+                listener = try NWListener(using: parameters, on: p)
+            } else {
+                listener = try NWListener(using: parameters)
+            }
+        } catch {
+            if wantedPort != 0 { startListener(tags: tags, wantedPort: 0) }
+            return
+        }
+        if advertise {
             var txt = NWTXTRecord()
+            txt["v"] = "1"
             txt["d"] = deviceId
             txt["t"] = Advert.encodeTags(tags)
-            listener.service = NWListener.Service(name: String(deviceId.prefix(8)), type: Self.serviceType, txtRecord: txt)
+            listener.service = NWListener.Service(name: "TripSplit-" + String(deviceId.prefix(8)), type: Self.serviceType, txtRecord: txt)
         }
-        let isFixed = tags == nil
         listener.newConnectionHandler = { [weak self] connection in
             guard let self else { return }
             let link = NWLink(connection: connection, queue: queue)
@@ -125,13 +141,13 @@ public final class LANTransport: PeerTransport, @unchecked Sendable {
             guard let self else { return }
             switch state {
             case .ready:
-                if isFixed {
-                    boundPort = listener.port?.rawValue
-                    for w in portWaiters { w.resume(returning: boundPort) }
-                    portWaiters = []
-                }
+                boundPort = listener.port?.rawValue
+                for w in portWaiters { w.resume(returning: boundPort) }
+                portWaiters = []
             case let .failed(error):
-                if !isFixed { continuation.yield(.problem(String(describing: error))) }
+                listener.cancel()
+                listeners.removeAll { $0 === listener }
+                if wantedPort != 0 { startListener(tags: tags, wantedPort: 0) } else { continuation.yield(.problem(String(describing: error))) }
             default:
                 break
             }
@@ -173,15 +189,19 @@ public final class LANTransport: PeerTransport, @unchecked Sendable {
         continuation.yield(.peers(list))
     }
 
-    /// When Bonjour finds nobody after `probeDelay`, offer the default gateway on the fixed port.
-    private func scheduleProbe() {
+    /// When Bonjour finds nobody after `probeDelay`, offer the default gateway on the fixed port. The offer
+    /// repeats every `probeInterval` while no peer is known (SPEC §10.1.2 step 4).
+    private func scheduleProbe(after delay: TimeInterval) {
         let work = DispatchWorkItem { [weak self] in
-            guard let self, found.isEmpty, let gateway = Gateway.ipv4() else { return }
-            probe = Peer(deviceId: "", kind: .wifi, tags: [], address: gateway + ":" + String(Self.fixedPort), isProbe: true)
-            publish()
+            guard let self else { return }
+            if found.isEmpty, let gateway = Gateway.ipv4() {
+                probe = Peer(deviceId: "", kind: .wifi, tags: [], address: gateway + ":" + String(Self.fixedPort), isProbe: true)
+                publish()
+            }
+            if probeInterval > 0 { scheduleProbe(after: probeInterval) }
         }
         probeWork = work
-        queue.asyncAfter(deadline: .now() + probeDelay, execute: work)
+        queue.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
     // MARK: Connecting
@@ -207,7 +227,7 @@ public final class LANTransport: PeerTransport, @unchecked Sendable {
     }
 
     private func open(_ endpoint: NWEndpoint) async throws -> any Link {
-        let link = NWLink(connection: NWConnection(to: endpoint, using: .tcp), queue: queue)
+        let link = NWLink(connection: NWConnection(to: endpoint, using: Self.parameters()), queue: queue)
         do {
             try await link.start()
         } catch {

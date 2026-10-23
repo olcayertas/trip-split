@@ -170,7 +170,8 @@ public final class SyncCoordinator {
             let result = try await session.run()
             await finished(result, rowId: rowId, key: key, group: group)
         } catch {
-            lastEnd[key] = (Date(), (try? await group.store.versionVector().values.reduce(0, +)) ?? 0)
+            // A failed probe is tried again with the next probe offer (every 15 s); no pause applies.
+            if !peer.isProbe { lastEnd[key] = (Date(), (try? await group.store.versionVector().values.reduce(0, +)) ?? 0) }
             // A probe that finds nobody is normal; do not show it as an error.
             statuses[rowId] = peer.isProbe ? .idle : .failed(Date(), Self.describe(error))
             rebuildRows()

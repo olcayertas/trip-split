@@ -70,7 +70,7 @@ public enum SyncMessage: Equatable, Sendable {
                   let app = v["appVersion"]?.stringValue,
                   let group = v["groupId"]?.stringValue, isUUID(group),
                   let wall = v["wallMillis"]?.intValue,
-                  let chunk = v["maxChunk"]?.intValue, chunk > 0
+                  let chunk = v["maxChunk"]?.intValue, chunk >= 0
             else { throw MessageError.shape }
             return .hello(Hello(protocolVersion: version, deviceId: device, appVersion: app, groupId: group,
                                 vector: try vector(v["vector"]), wallMillis: wall, maxChunk: chunk))

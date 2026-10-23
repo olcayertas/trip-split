@@ -348,6 +348,16 @@ struct SessionTests {
         #expect(await b.allOps.contains(forked))
     }
 
+    @Test func silentPeerTimesOut() async throws {
+        let a = InMemoryOpStore(groupId: groupId, deviceId: deviceId(1))
+        let (la, _) = MemoryLink.pair(seed: 1)
+        let timeouts = SessionTimeouts(record: 0.2, hello: 0.2, idle: 0.2, session: 5)
+        let session = SyncSession(role: .initiator, link: la, groups: [SyncGroup(groupId: groupId, groupKey: groupKey, store: a)],
+                                  options: SessionOptions(deviceId: deviceId(1), timeouts: timeouts))
+        let result = await capture { try await session.run() }
+        #expect((result.failure as? SessionError) == .timeout)
+    }
+
     @Test func registryClosesNewerOnHigherDevice() async {
         let registry = SessionRegistry()
         #expect(await registry.admit(peerDevice: deviceId(1), groupId: groupId, myDevice: deviceId(2)))
