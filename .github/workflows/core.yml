@@ -42,6 +42,11 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v4
+      # The LAN interop tests run the Python reference peer. Without these packages they skip.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r protocol/reference/requirements.txt
       - run: ./gradlew :core:test --console=plain
         working-directory: android
 
