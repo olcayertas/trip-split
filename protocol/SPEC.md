@@ -527,3 +527,11 @@ code).
 - A central that is not sure if the peripheral still lives (a write fails or times out) disconnects and
   starts again later. No data is lost: the next session sends what is missing.
 - The sync screen keeps the screen on (`docs/PLAN.md` §9.3). iOS advertises only in the foreground.
+
+### 10.3 Privacy
+
+The discovery tag (§8.1) is a stable identifier of the group. Anyone on the same network, or in BLE
+range, can read it in the DNS-SD TXT record (§10.1.1) and in the `info` characteristic (§10.2.2). An
+observer can use it to link the devices of one group across places and time. The tag reveals nothing
+about the content of the group: it does not give the key, the name or the ops. Version 1 keeps the
+static tag. Rotating tags are listed in `docs/PLAN.md` §16.
