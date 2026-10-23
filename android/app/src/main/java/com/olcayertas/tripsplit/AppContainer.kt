@@ -17,6 +17,9 @@ class AppContainer(context: Context) {
     val store = RoomOpStore(database)
     val identityManager = IdentityManager(database, KeystoreInstallMarker())
 
+    /** A `tripsplit://join` link that the app got from outside. The root screen opens the join screen with it. */
+    val pendingInvite = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
     /** Set once [IdentityManager.ensure] has run. Await it before you use [repository]. */
     val identity = CompletableDeferred<DeviceIdentity>()
     lateinit var repository: TripRepository

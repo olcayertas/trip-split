@@ -131,4 +131,38 @@
     <string name="ble_location_off">Android 11 and older need the location switch on for a Bluetooth scan. TripSplit does not read your location.</string>
     <string name="ble_unsupported">This phone has no Bluetooth Low Energy.</string>
     <string name="ble_try_again">Check again</string>
+    <string name="claim_title">Are you %1$s?</string>
+    <string name="claim_confirm">That is me</string>
+    <string name="claim_action">This is me</string>
+    <string name="claim_release">Release</string>
+    <string name="takeover_action">Take over</string>
+    <string name="takeover_title">Take over %1$s?</string>
+    <string name="takeover_body">This member is linked to another phone. Take it over only if that phone is yours or lost.</string>
+    <string name="takeover_restore_note">This member was linked to an earlier ID of this phone. That happens after a restore from a backup or a move to a new phone. Take it over to continue as this member.</string>
+    <string name="takeover_confirm">Take over</string>
+    <string name="member_was_yours">This was your member</string>
+    <string name="member_other_phone">Linked to another phone</string>
+
+    <string name="invite_action">Invite</string>
+    <string name="invite_title">Invite to the group</string>
+    <string name="invite_qr_description">QR code that joins the group</string>
+    <string name="invite_scan_help">Ask the other person to open TripSplit, tap Join and scan this code.</string>
+    <string name="invite_share_link">Share as a link</string>
+    <string name="invite_warning_title">Share the link?</string>
+    <string name="invite_warning">Anyone who gets this link can read and change the group. Send it only to group members.</string>
+    <string name="invite_share_anyway">Share</string>
+
+    <string name="join_group">Join</string>
+    <string name="join_title">Join a group</string>
+    <string name="join_scan">Scan</string>
+    <string name="join_paste">Paste link</string>
+    <string name="join_link">Invite link</string>
+    <string name="join_action">Join</string>
+    <string name="join_invalid">This is not a TripSplit invite.</string>
+    <string name="join_done">You joined the group.</string>
+    <string name="join_already">You already have this group.</string>
+    <string name="join_next">The group is empty until your phone syncs with a phone that has it. Open Nearby on both phones.</string>
+    <string name="join_open_nearby">Open Nearby</string>
+    <string name="scan_need_camera">TripSplit needs the camera to scan the QR code. The picture stays on your phone.</string>
+    <string name="scan_allow_camera">Allow camera</string>
 </resources>

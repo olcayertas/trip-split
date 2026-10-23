@@ -45,17 +45,26 @@ data class NearbyState(
     val clockSkew: Boolean = false,
 )
 
-/** The cooldown of SPEC §10.1.4: wait 30 s after a session with a peer, unless a new local op exists. */
-class Cooldown(private val now: () -> Long, private val windowMs: Long = 30_000) {
-    private val last = HashMap<String, Pair<Long, Long>>()
+/**
+ * The cooldown of SPEC §10.1.4: wait 30 s after a session with a peer, unless a new local op exists. A failed
+ * attempt is not a session: it waits a short [failedWindowMs] only, so a transient error does not block sync.
+ */
+class Cooldown(
+    private val now: () -> Long,
+    private val windowMs: Long = 30_000,
+    private val failedWindowMs: Long = 3_000,
+) {
+    private class Entry(val at: Long, val seq: Long, val window: Long)
+
+    private val last = HashMap<String, Entry>()
 
     fun allowed(key: String, localSeq: Long): Boolean {
         val l = last[key] ?: return true
-        return now() - l.first >= windowMs || localSeq > l.second
+        return now() - l.at >= l.window || (localSeq > l.seq && l.window == windowMs)
     }
 
-    fun record(key: String, localSeq: Long) {
-        last[key] = now() to localSeq
+    fun record(key: String, localSeq: Long, success: Boolean = true) {
+        last[key] = Entry(now(), localSeq, if (success) windowMs else failedWindowMs)
     }
 }
 
@@ -144,7 +153,7 @@ class LanDirector(
         val outcome = connector.connect(peer.host, peer.port, g.groupId)
         synchronized(lock) {
             busy.remove(key)
-            cooldown.record(key, localSeq)
+            cooldown.record(key, localSeq, success = outcome is SessionOutcome.Done)
         }
         record(peer.txt.deviceId, outcome)
         publishBusy(peer.txt.deviceId, false)

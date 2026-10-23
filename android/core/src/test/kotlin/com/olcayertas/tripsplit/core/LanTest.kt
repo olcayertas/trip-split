@@ -39,6 +39,10 @@ class FakeNetwork {
     fun discovery() = object : PeerDiscovery {
         private var mine: Entry? = null
         override fun start(port: Int, txt: Map<String, String>, instance: String, onPeer: (DiscoveredPeer) -> Unit) {
+            synchronized(entries) { startLocked(port, txt, onPeer) }
+        }
+
+        private fun startLocked(port: Int, txt: Map<String, String>, onPeer: (DiscoveredPeer) -> Unit) {
             val e = Entry(port, txt, onPeer)
             mine = e
             for (o in entries) {

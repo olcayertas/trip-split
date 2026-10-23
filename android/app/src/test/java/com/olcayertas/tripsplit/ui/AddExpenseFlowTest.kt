@@ -46,7 +46,13 @@ class AddExpenseFlowTest {
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, TripSplitDatabase::class.java).allowMainThreadQueries().build()
+        db = Room.inMemoryDatabaseBuilder(context, TripSplitDatabase::class.java)
+            .allowMainThreadQueries()
+            // Run Room work on the calling thread. A pool thread would resume the Compose coroutines off the
+            // main thread, which Robolectric rejects (CalledFromWrongThreadException) and which made these tests flaky.
+            .setQueryExecutor(Runnable::run)
+            .setTransactionExecutor(Runnable::run)
+            .build()
     }
 
     @After
@@ -91,7 +97,7 @@ class AddExpenseFlowTest {
 
     @Test
     fun theExpenseRouteWritesAnOpThatTheFoldShows() {
-        val repo = TripRepository(db, Device("aaaaaaaa-0000-4000-8000-000000000001", RoomOpStore(db), wall = { 1_761_210_000_000L }, newId = ::nextId))
+        val repo = TripRepository(db, Device("aaaaaaaa-0000-4000-8000-000000000001", RoomOpStore(db), wall = { 1_761_210_000_000L }, newId = ::nextId), kotlin.coroutines.EmptyCoroutineContext)
         val g = runBlocking { repo.createGroup("Trip", "EUR", "Ali") }
         val ayseId = runBlocking { repo.addMember(g.groupId, "Ayşe", false).memberId }
         var done = false
@@ -100,11 +106,11 @@ class AddExpenseFlowTest {
                 ExpenseRoute(repo, g.groupId, null, onDone = { done = true })
             }
         }
-        compose.waitUntil(5_000) { compose.onAllNodesWithTagCount("title") > 0 }
+        compose.awaitUntil { compose.onAllNodesWithTagCount("title") > 0 }
         compose.onNodeWithTag("title").performTextInput("Taxi")
         compose.onNodeWithTag("amount").performTextInput("30,00")
         compose.onNodeWithTag("save").performClick()
-        compose.waitUntil(5_000) { done }
+        compose.awaitUntil { done }
         val e = runBlocking { repo.foldNow(g.groupId) }.expenses.single()
         assertEquals("Taxi", e.title)
         assertEquals(3000L, e.baseAmountMinor)

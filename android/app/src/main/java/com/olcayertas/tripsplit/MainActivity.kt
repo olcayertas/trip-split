@@ -12,8 +12,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val container = (application as TripSplitApp).container
+        intent?.data?.toString()?.let { container.pendingInvite.value = it }
         setContent {
             TripSplitTheme { Root(container) }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        intent.data?.toString()?.let { (application as TripSplitApp).container.pendingInvite.value = it }
     }
 }

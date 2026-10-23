@@ -37,12 +37,18 @@ import com.olcayertas.tripsplit.R
 import com.olcayertas.tripsplit.data.TripRepository
 
 @Composable
-fun GroupsScreen(repo: TripRepository, deviceId: String, onCreate: () -> Unit, onOpen: (String) -> Unit) {
+fun GroupsScreen(repo: TripRepository, deviceId: String, onCreate: () -> Unit, onJoin: () -> Unit, onOpen: (String) -> Unit) {
     val ids by repo.observeGroupIds().collectAsState(initial = emptyList())
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
-        topBar = { LargeTopAppBar(title = { Text(stringResource(R.string.groups_title)) }, scrollBehavior = scroll) },
+        topBar = {
+            LargeTopAppBar(
+                title = { Text(stringResource(R.string.groups_title)) },
+                actions = { androidx.compose.material3.TextButton(onJoin) { Text(stringResource(R.string.join_group)) } },
+                scrollBehavior = scroll,
+            )
+        },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onCreate,

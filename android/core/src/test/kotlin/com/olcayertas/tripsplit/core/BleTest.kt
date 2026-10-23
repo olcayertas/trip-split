@@ -90,7 +90,11 @@ class BleTest {
         val info = buildInfo(p.device.deviceId, p.store.groups(), canCentral = false)
         radio.session = peripheral.accept(radio.ServerConn())
         val runner = BleCentralRunner(c.device, c.admission, scope, { radio.ClientConn(info) })
-        return runner.run("AA:BB") to radio
+        val result = runner.run("AA:BB")
+        // The peripheral session ends when the central drops the link. Wait for it: a new connection of the same
+        // pair while the old session still runs is a duplicate (SPEC §8.3 step 7) and the higher id refuses it.
+        if (result is CentralResult.Synced) withTimeout(10_000) { radio.session!!.outcome.await() }
+        return result to radio
     }
 
     @Test

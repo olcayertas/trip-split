@@ -47,3 +47,20 @@ fun buildHistory(ops: List<JsonObject>): List<HistoryEntry> {
     }
     return out.asReversed()
 }
+
+/**
+ * True when no op has claimed or released [memberId] yet and the member is not the creator member of the group. Then
+ * a claim is the first time a phone takes this member, and the app asks "From now on" or "Also earlier expenses"
+ * (PLAN §7.1). A take-over after a restore is not a first claim.
+ */
+fun isFirstClaim(ops: List<JsonObject>, memberId: String): Boolean {
+    for (op in ops) {
+        val type = strOrNull(op["type"]) ?: continue
+        val body = op["body"] as? JsonObject ?: continue
+        when (type) {
+            "member.claim", "member.unclaim" -> if (strOrNull(body["memberId"]) == memberId) return false
+            "group.create" -> if (strOrNull(body["creatorMemberId"]) == memberId) return false
+        }
+    }
+    return true
+}

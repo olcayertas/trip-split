@@ -83,6 +83,14 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.navigation.compose)
+
+    // QR: ZXing core makes the code. CameraX and the bundled ML Kit model scan it, offline.
+    implementation(libs.zxing.core)
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+    implementation(libs.mlkit.barcode)
     debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(platform(libs.compose.bom))

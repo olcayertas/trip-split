@@ -72,6 +72,10 @@ class BleLink(
             } catch (_: TimeoutCancellationException) {
                 fail("unfinished_message")
             } catch (_: ClosedReceiveChannelException) {
+                // The platform said the connection is gone, or the session closed the link. Every chunk that
+                // arrived before is reassembled and delivered first (the central disconnects right after its
+                // last chunk), then the reader of messages sees the end.
+                messages.close(LinkClosedException(closeReason ?: "closed"))
             }
         }
     }
@@ -81,8 +85,16 @@ class BleLink(
         incoming.trySend(chunk)
     }
 
-    /** The platform tells the link that the connection is gone. */
-    fun onDisconnected() = fail("disconnected", sendAbort = false)
+    /**
+     * The platform tells the link that the connection is gone. Writes fail from now on. Chunks that arrived
+     * before are still delivered.
+     */
+    fun onDisconnected() {
+        if (!closed.compareAndSet(false, true)) return
+        closeReason = "disconnected"
+        incoming.close()
+        pipe.disconnect()
+    }
 
     private fun fail(reason: String, sendAbort: Boolean = true) {
         if (!closed.compareAndSet(false, true)) return
@@ -93,13 +105,14 @@ class BleLink(
     }
 
     private fun drop(sendAbort: Boolean) {
+        if (!(isPeripheral && sendAbort)) {
+            pipe.disconnect()
+            return
+        }
         scope.launch {
-            if (isPeripheral && sendAbort) {
-                try {
-                    val seq = sendSeq
-                    pipe.send(abortChunk(seq))
-                } catch (_: Exception) {
-                }
+            try {
+                pipe.send(abortChunk(sendSeq))
+            } catch (_: Exception) {
             }
             pipe.disconnect()
         }
