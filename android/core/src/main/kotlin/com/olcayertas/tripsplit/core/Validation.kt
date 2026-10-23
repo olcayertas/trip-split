@@ -41,6 +41,10 @@ internal fun opAuthor(op: JsonObject): String = strOrNull(op["author"]) ?: ""
 internal fun opSeq(op: JsonObject): Long = intOrNull(op["seq"]) ?: 0L
 internal fun opRef(op: JsonObject): String = "${opAuthor(op)}:${opSeq(op)}"
 
+/** Public readers of the envelope for other modules. */
+fun opAuthorOf(op: JsonObject): String = opAuthor(op)
+fun opSeqOf(op: JsonObject): Long = opSeq(op)
+
 private fun checkUuid(v: JsonElement?) {
     val s = strOrNull(v)
     need(s != null && UUID_RE.matches(s))
