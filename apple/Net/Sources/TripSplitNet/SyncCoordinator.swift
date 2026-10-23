@@ -111,7 +111,7 @@ public final class SyncCoordinator {
     }
 
     private func evaluate() async {
-        for peer in candidates() {
+        for peer in candidates() where peer.initiate {
             for group in matchingGroups(peer) {
                 let key = (peer.isProbe ? peer.address : peer.deviceId) + "|" + group.groupId
                 guard !running.contains(key) else { continue }
@@ -139,11 +139,12 @@ public final class SyncCoordinator {
     }
 
     private func options(kind: TransportKind, row: RowBox) -> SessionOptions {
-        SessionOptions(deviceId: repository.deviceId, admission: registry, onEvent: { [weak self] event in
+        SessionOptions(deviceId: repository.deviceId, maxChunk: kind == .bluetooth ? 512 : 0, admission: registry,
+                       onEvent: { [weak self] event in
             if case let .handshake(peerDevice, _, _) = event, row.id == nil { row.id = kind.rawValue + "|" + peerDevice }
             let id = row.id
             Task { @MainActor in self?.note(event, row: id) }
-        })
+        }, timeouts: kind == .bluetooth ? .ble : .lan)
     }
 
     private func note(_ event: SessionEvent, row: String?) {

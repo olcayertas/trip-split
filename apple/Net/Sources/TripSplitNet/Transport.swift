@@ -15,10 +15,13 @@ public struct Peer: Sendable, Hashable, Identifiable {
     public let address: String
     /// True for the fixed-port fallback: the peer is not known yet, so the coordinator tries each group.
     public let isProbe: Bool
+    /// False while the local device waits for the peer to connect first (SPEC §10.2.3).
+    public let initiate: Bool
 
     public var id: String { kind.rawValue + "|" + (isProbe ? "probe|" : "") + (deviceId.isEmpty ? address : deviceId) }
 
-    public init(deviceId: String, kind: TransportKind, tags: [String], address: String, isProbe: Bool = false) {
+    public init(deviceId: String, kind: TransportKind, tags: [String], address: String, isProbe: Bool = false, initiate: Bool = true) {
+        self.initiate = initiate
         self.deviceId = deviceId
         self.kind = kind
         self.tags = tags

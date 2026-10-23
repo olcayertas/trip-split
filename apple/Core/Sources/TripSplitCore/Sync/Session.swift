@@ -10,6 +10,13 @@ public protocol Link: Sendable {
     /// One stream for the life of the link. It ends (or throws) when the peer or the transport closes.
     var incoming: AsyncThrowingStream<[UInt8], Error> { get }
     func close()
+    /// Called once, after the hello of the peer. `maxChunk` is the value in that hello (0 on LAN).
+    /// A Bluetooth link uses it to set the chunk size of its outgoing direction (SPEC §10.2.5).
+    func peerAnnounced(maxChunk: Int64)
+}
+
+extension Link {
+    public func peerAnnounced(maxChunk: Int64) {}
 }
 
 public struct SyncGroup: Sendable {
@@ -304,6 +311,7 @@ public actor SyncSession {
         guard peer.groupId == g.groupId else { throw SessionError.groupMismatch }
         guard min(peer.protocolVersion, hello.protocolVersion) == 1 else { throw SessionError.unsupportedVersion }
 
+        link.peerAnnounced(maxChunk: peer.maxChunk)
         var state = SessionResult(groupId: g.groupId, peerDeviceId: peer.deviceId)
         state.peerMaxChunk = peer.maxChunk
         state.clockSkew = peer.wallMillis > options.now() + maxForwardSkewMillis
