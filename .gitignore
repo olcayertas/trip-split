@@ -27,3 +27,6 @@ android/keystore.properties
 dist/
 # Ruby
 apple/vendor/bundle/
+
+# Bundler local config
+apple/.bundle/

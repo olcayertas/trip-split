@@ -327,10 +327,9 @@ interface Link { suspend fun send(frame: ByteArray); val incoming: Flow<ByteArra
 
 ### 9.1 Wi-Fi LAN
 
-- Discovery: DNS-SD service type `_tripsplit._tcp`. The TXT record holds `d=<deviceId>` and
-  `t=<discovery tag>`. The discovery tag is `base64url(HMAC-SHA256(groupKey, "discover"))[0..8]` per
-  group the device holds (several tags if the device has several groups, TXT limit permitting). A
-  stranger on hotel Wi-Fi learns no group names.
+- Discovery: DNS-SD service type `_tripsplit._tcp`. **SPEC §10.1 is normative** for the TXT keys
+  (`v`, `d`, `t` as 24-hex-character discovery tags), the port rules and the timeouts. A stranger on
+  hotel Wi-Fi learns no group names (SPEC §10.3 lists what the tag does reveal).
 - iOS: `NWListener` with a Bonjour service + `NWBrowser`. Needs `NSLocalNetworkUsageDescription` and
   `NSBonjourServices = ["_tripsplit._tcp"]` in Info.plist. The local network prompt appears on first use.
 - Android: `NsdManager` register/discover + `ServerSocket`/`Socket`. Needs a multicast lock while the
@@ -353,8 +352,9 @@ interface Link { suspend fun send(frame: ByteArray); val incoming: Flow<ByteArra
   - `tx` characteristic (notify): peripheral → central bytes.
   - `info` characteristic (read): deviceId + discovery tags, so a central can skip foreign groups
     before it starts a session.
-- The byte stream (pre-handshake record, then frames) is split into chunks with a 1-byte chunk header
-  (first / middle / last / single). The receiver reassembles. Chunk size is **per direction**:
+- The byte stream (handshake record, then frames) is split into chunks. **SPEC §10.2 is normative**
+  for the GATT UUIDs, the 3-byte chunk header (flags and `seq`), reassembly and roles. Chunk size is
+  **per direction**:
   - central → peripheral: iOS `peripheral.maximumWriteValueLength(for: .withResponse)`; Android
     `negotiatedMtu − 3` after `onMtuChanged`.
   - peripheral → central: iOS `central.maximumUpdateValueLength`; Android peripheral uses the MTU from
@@ -557,6 +557,8 @@ devices can catch; the owner must provide at least one real iPhone and one real 
 - Snapshot + log compaction for very long groups.
 - CSV / PDF export of the final settlement.
 - Exchange rates fetched when online.
+- Rotating discovery tags (for example an HMAC over a day epoch; accept the previous, current and next
+  epoch). v1 uses one static tag for each group (SPEC §10.3).
 - Apple Multipeer Connectivity for iPhone↔iPhone speed (it does not talk to Android, so it is an extra
   transport, not a replacement).
 
