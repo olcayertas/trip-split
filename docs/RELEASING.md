@@ -183,7 +183,7 @@ The workflow `.github/workflows/pages.yml` publishes `docs/privacy/` when a chan
 - fastlane needs a UTF-8 locale. If it stops with a locale warning, run `export LANG=en_US.UTF-8` first.
 - The app version and build come from `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in
   `apple/project.yml`. The `beta` lane sets the build number. Do not put fixed values in `Info.plist`.
-- The app icon in the repo is a placeholder. Replace it before a public release.
+- The app icon comes from `design/icon/gen_icon.py` (needs `rsvg-convert`). Change the generator and run it again. Never edit the PNGs by hand.
 
 - `gym` passes `xcargs` to the export step too. The `beta` lane sends the same auth arguments to the archive and the export. Check the export step on the first real run.
 - `latest_testflight_build_number` needs the app record. Make the record first, or the lane fails.
