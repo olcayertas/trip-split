@@ -165,4 +165,8 @@
     <string name="join_open_nearby">Open Nearby</string>
     <string name="scan_need_camera">TripSplit needs the camera to scan the QR code. The picture stays on your phone.</string>
     <string name="scan_allow_camera">Allow camera</string>
+    <string name="settings_title">Settings</string>
+    <string name="relay_switch">Sync over the internet</string>
+    <string name="relay_explain">Your phone sends encrypted changes to a relay. The relay sees your IP address and when you sync. It cannot read the names, the amounts or the group.</string>
+    <string name="relay_not_set_up">Not set up yet</string>
 </resources>

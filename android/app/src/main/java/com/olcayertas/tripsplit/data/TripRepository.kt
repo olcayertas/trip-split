@@ -31,14 +31,16 @@ class TripRepository(
     val device: Device,
     /** Where the folds run. Tests pass an empty context, so no thread switch happens. */
     private val computeContext: kotlin.coroutines.CoroutineContext = Dispatchers.Default,
+    /** Called after a local write. The app uses it to start a relay sync (SPEC §10.4.4). */
+    private val onLocalWrite: () -> Unit = {},
 ) {
     suspend fun createGroup(name: String, baseCurrency: String, creatorName: String): CreatedGroup =
-        device.createGroup(name, baseCurrency, creatorName)
+        device.createGroup(name, baseCurrency, creatorName).also { onLocalWrite() }
 
     suspend fun join(invite: Invite) = device.join(invite)
 
     suspend fun append(groupId: String, type: String, body: JsonObject): JsonObject =
-        device.append(groupId, type, body)
+        device.append(groupId, type, body).also { onLocalWrite() }
 
     /** The fold of one group. It emits again whenever an op arrives, local or from a peer. */
     fun observeFold(groupId: String): Flow<FoldState> =

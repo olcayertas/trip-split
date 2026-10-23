@@ -4,6 +4,8 @@ import android.content.Context
 import com.olcayertas.tripsplit.core.Device
 import com.olcayertas.tripsplit.data.RoomOpStore
 import com.olcayertas.tripsplit.net.NearbyController
+import com.olcayertas.tripsplit.net.RelayController
+import com.olcayertas.tripsplit.net.RelaySettings
 import com.olcayertas.tripsplit.data.TripRepository
 import com.olcayertas.tripsplit.data.db.TripSplitDatabase
 import com.olcayertas.tripsplit.data.identity.DeviceIdentity
@@ -28,9 +30,12 @@ class AppContainer(context: Context) {
     /** Sync while the Nearby screen is open. */
     val nearby = NearbyController(context.applicationContext) { repository.device }
 
+    /** The internet relay (SPEC §10.4). Off while [BuildConfig.RELAY_BASE_URL] is the placeholder. */
+    val relay = RelayController(context, BuildConfig.RELAY_BASE_URL, RelaySettings(context)) { identity.await(); repository.device }
+
     suspend fun start() {
         val id = identityManager.ensure()
-        repository = TripRepository(database, Device(id.deviceId, store))
+        repository = TripRepository(database, Device(id.deviceId, store), onLocalWrite = { relay.requestSync() })
         identity.complete(id)
     }
 }

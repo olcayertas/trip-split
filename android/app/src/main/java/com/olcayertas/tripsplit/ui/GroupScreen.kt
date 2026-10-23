@@ -75,7 +75,10 @@ fun GroupScreen(
     onNearby: () -> Unit,
     onAddExpense: () -> Unit,
     onEditExpense: (String) -> Unit,
+    /** Called when the screen opens. The app starts a relay sync (SPEC §10.4.4). */
+    onOpened: () -> Unit = {},
 ) {
+    androidx.compose.runtime.LaunchedEffect(groupId) { onOpened() }
     val state by repo.observeFold(groupId).collectAsState(initial = null)
     val ops by repo.observeOps(groupId).collectAsState(initial = emptyList())
     var tab by remember { mutableIntStateOf(0) }

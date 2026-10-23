@@ -104,6 +104,37 @@ class Device(
         if (result.stored.isNotEmpty()) hlc = next
         ReceiveResult(result.stored.size, result.skipped, dropped, result.forks.size, skew)
     }
+
+    /**
+     * SPEC §10.4.2 and §10.4.4 step 1 for one relay blob. [raw] is null when the blob did not decrypt. A hash
+     * error skips the whole batch, it does not stop the sync. The cursor moves in every case. The new
+     * relay position is saved in the same transaction as the ops.
+     */
+    suspend fun receiveFromRelay(groupId: String, raw: List<JsonElement>?, cursor: Long): ReceiveResult = mutex.withLock {
+        val accepted = ArrayList<JsonObject>()
+        var dropped = 0
+        var bad = raw == null
+        for (op in raw.orEmpty()) {
+            when (checkReceivedOp(op, groupId)) {
+                OpCheck.OK -> accepted.add(op as JsonObject)
+                OpCheck.HASH -> bad = true
+                else -> dropped++
+            }
+        }
+        if (bad) accepted.clear()
+        val state = store.relayState(groupId)
+        val relay = RelayState(maxOf(state.cursor, cursor), if (bad) state.vector else advanceRelayVector(state.vector, accepted))
+        val clock = clockLocked()
+        val next = Hlc(deviceId, clock.millis, clock.counter)
+        var skew = false
+        val result = store.insertFromRelay(groupId, accepted, relay) { stored ->
+            val now = wall()
+            for (op in stored) if (next.receive(strOrNull(op["hlc"])!!, now)) skew = true
+            if (stored.isEmpty()) null else next.state()
+        }
+        if (result.stored.isNotEmpty()) hlc = next
+        ReceiveResult(result.stored.size, result.skipped, dropped, result.forks.size, skew)
+    }
 }
 
 class CreatedGroup(val groupId: String, val key: ByteArray, val creatorMemberId: String) {

@@ -18,6 +18,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        (application as TripSplitApp).container.relay.setForeground(true)
+    }
+
+    override fun onStop() {
+        (application as TripSplitApp).container.relay.setForeground(false)
+        super.onStop()
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         intent.data?.toString()?.let { (application as TripSplitApp).container.pendingInvite.value = it }

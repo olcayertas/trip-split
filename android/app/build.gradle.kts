@@ -23,6 +23,10 @@ android {
         versionCode = 1
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // SPEC §10.4.3: the relay URL is fixed in the build. The placeholder keeps the relay sync off.
+        // Set it with -PrelayBaseUrl=https://... for a build that talks to a relay.
+        val relayUrl = providers.gradleProperty("relayBaseUrl").getOrElse("https://relay.invalid")
+        buildConfigField("String", "RELAY_BASE_URL", "\"$relayUrl\"")
     }
 
     signingConfigs {
@@ -50,7 +54,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     testOptions {
         unitTests {
             isIncludeAndroidResources = true

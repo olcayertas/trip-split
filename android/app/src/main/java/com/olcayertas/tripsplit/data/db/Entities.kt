@@ -30,9 +30,14 @@ data class GroupEntity(
     @ColumnInfo(name = "group_key", typeAffinity = ColumnInfo.BLOB) val groupKey: ByteArray,
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "last_used_at") val lastUsedAt: Long,
+    /** SPEC §10.4.4: the highest relay cursor that the device has read. */
+    @ColumnInfo(name = "relay_cursor", defaultValue = "0") val relayCursor: Long = 0,
+    /** SPEC §10.4.4: JSON object, author to the highest seq that the relay holds. */
+    @ColumnInfo(name = "relay_vector", defaultValue = "{}") val relayVector: String = "{}",
 ) {
     override fun equals(other: Any?) = other is GroupEntity && other.groupId == groupId &&
-        other.groupKey.contentEquals(groupKey) && other.createdAt == createdAt && other.lastUsedAt == lastUsedAt
+        other.groupKey.contentEquals(groupKey) && other.createdAt == createdAt && other.lastUsedAt == lastUsedAt &&
+        other.relayCursor == relayCursor && other.relayVector == relayVector
 
     override fun hashCode() = groupId.hashCode()
 }

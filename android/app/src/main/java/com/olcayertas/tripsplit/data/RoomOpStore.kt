@@ -7,6 +7,7 @@ import com.olcayertas.tripsplit.core.GroupKey
 import com.olcayertas.tripsplit.core.Invalid
 import com.olcayertas.tripsplit.core.KNOWN_TYPES
 import com.olcayertas.tripsplit.core.OpStore
+import com.olcayertas.tripsplit.core.RelayState
 import com.olcayertas.tripsplit.core.StoreResult
 import com.olcayertas.tripsplit.core.canonical
 import com.olcayertas.tripsplit.core.checkBody
@@ -19,6 +20,7 @@ import com.olcayertas.tripsplit.data.db.OpEntity
 import com.olcayertas.tripsplit.data.db.TripSplitDatabase
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -45,6 +47,28 @@ class RoomOpStore(
 
     override suspend fun vector(groupId: String): Map<String, Long> =
         versionVectorOf(db.ops().authorSeqs(groupId).map { it.author to it.seq })
+
+    override suspend fun relayState(groupId: String): RelayState {
+        val g = db.groups().get(groupId) ?: return RelayState()
+        val vector = Json.parseToJsonElement(g.relayVector).jsonObject.mapValues { it.value.jsonPrimitive.content.toLong() }
+        return RelayState(g.relayCursor, vector)
+    }
+
+    override suspend fun saveRelayState(groupId: String, state: RelayState) {
+        val vector = JsonObject(state.vector.mapValues { JsonPrimitive(it.value) })
+        db.groups().setRelay(groupId, state.cursor, vector.toString())
+    }
+
+    override suspend fun insertFromRelay(
+        groupId: String,
+        ops: List<JsonObject>,
+        relay: RelayState,
+        clockAfter: (List<JsonObject>) -> ClockState?,
+    ): StoreResult = db.withTransaction {
+        val result = insert(groupId, ops, clockAfter)
+        saveRelayState(groupId, relay)
+        result
+    }
 
     override suspend fun insert(
         groupId: String,

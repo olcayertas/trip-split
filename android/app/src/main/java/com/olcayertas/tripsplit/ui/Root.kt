@@ -26,6 +26,7 @@ object Routes {
     const val GROUPS = "groups"
     const val CREATE = "create"
     const val NEARBY = "nearby"
+    const val SETTINGS = "settings"
     const val JOIN = "join?link={link}"
 
     fun join(link: String? = null) = "join?link=" + android.net.Uri.encode(link.orEmpty())
@@ -72,7 +73,7 @@ private fun AppNav(container: AppContainer, identity: DeviceIdentity) {
     }
     NavHost(nav, startDestination = Routes.GROUPS) {
         composable(Routes.GROUPS) {
-            GroupsScreen(repo, identity.deviceId, onCreate = { nav.navigate(Routes.CREATE) }, onJoin = { nav.navigate(Routes.join()) }, onOpen = { nav.navigate(Routes.group(it)) })
+            GroupsScreen(repo, identity.deviceId, onCreate = { nav.navigate(Routes.CREATE) }, onJoin = { nav.navigate(Routes.join()) }, onOpen = { nav.navigate(Routes.group(it)) }, onSettings = { nav.navigate(Routes.SETTINGS) })
         }
         composable(Routes.CREATE) {
             CreateGroupScreen(
@@ -89,12 +90,14 @@ private fun AppNav(container: AppContainer, identity: DeviceIdentity) {
                 onNearby = { nav.navigate(Routes.NEARBY) },
                 onAddExpense = { nav.navigate(Routes.expense(groupId)) },
                 onEditExpense = { nav.navigate(Routes.expense(groupId, it)) },
+                onOpened = { container.relay.requestSync() },
             )
         }
         composable(Routes.JOIN) { entry ->
             val link = entry.arguments?.getString("link").orEmpty().ifEmpty { null }
             JoinScreen(repo, link, onBack = { nav.popBackStack() }, onOpenNearby = { nav.navigate(Routes.NEARBY) { popUpTo(Routes.GROUPS) } })
         }
+        composable(Routes.SETTINGS) { SettingsScreen(container.relay, onBack = { nav.popBackStack() }) }
         composable(Routes.NEARBY) { NearbyScreen(container.nearby, onBack = { nav.popBackStack() }) }
         composable(Routes.EXPENSE) { entry ->
             val groupId = entry.arguments!!.getString("groupId")!!
