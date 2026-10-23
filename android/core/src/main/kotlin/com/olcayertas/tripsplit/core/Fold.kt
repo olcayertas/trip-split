@@ -209,9 +209,11 @@ fun fold(groupId: String, ops: List<JsonObject>): FoldState {
             "member.claim" -> claim(b.str("memberId"), author)
             "member.unclaim" -> {
                 val member = members[b.str("memberId")]
-                if (member != null && member.claimedBy == author) {
+                // Any device may release any claim (SPEC §4.4).
+                val holder = member?.claimedBy
+                if (member != null && holder != null) {
                     member.claimedBy = null
-                    claimOfDevice.remove(author)
+                    claimOfDevice.remove(holder)
                 }
             }
             "member.remove" -> {

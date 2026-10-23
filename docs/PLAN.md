@@ -254,6 +254,22 @@ after D released it; unclaim by a non-claimant.
 - Anyone who holds the key is a full member. v1 has no roles and no key rotation. The plan accepts
   this because the group is a set of friends in the same place. The README states it plainly.
 
+### 7.1 A newcomer and the past expenses (owner request, 2026-10-23)
+
+A split names its members by id, so a person who joins later is not in any earlier split. The app makes
+this a visible choice when a member is added or claimed for the first time:
+
+- **From now on** (default): earlier expenses do not change. New expenses include every current member
+  by default, so they include the newcomer.
+- **Also earlier expenses**: the app writes one `expense.edit` for each earlier expense that is not
+  deleted, with the newcomer added to its split. `equal`: add the id. `weights`: add the id with weight 1.
+  `exact`: do not change it, because the amounts must still add up; the app lists these expenses so that
+  someone can edit them by hand.
+
+"Earlier" means every expense in the fold at that moment. The choice needs no protocol change: the edits
+are normal ops and sync as usual. An edit replaces the money field group (§4.5), so a concurrent amount
+edit on the same expense can lose. The confirmation tells the user how many expenses change.
+
 ## 8. Wire protocol
 
 ### 8.1 Framing and encryption
