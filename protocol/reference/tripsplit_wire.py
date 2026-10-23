@@ -148,3 +148,89 @@ def check_received_op(op, group_id: str) -> str:
     if ref.op_hash(op) != op["hash"]:
         return "hash"
     return "ok"
+
+
+# --- BLE chunks (SPEC §10.2.4, §10.2.5) -------------------------------------------------------
+
+SERVICE_UUID = "717ed7c0-0ed4-4251-a5b1-606fa1771f42"
+RX_UUID = "33f56749-2c8f-4bb9-9d1b-3b27fa731a8f"
+TX_UUID = "bd1e5af2-f0f9-49f7-9128-63c490a78986"
+INFO_UUID = "c9698bc0-ddbd-4f16-8bd3-9c7d34135fba"
+
+FLAG_FIRST, FLAG_LAST, FLAG_ABORT = 0x01, 0x02, 0x04
+CHUNK_HEADER = 3
+MIN_CHUNK, MAX_CHUNK = 20, 512
+MAX_MESSAGE = MAX_FRAME + 4
+
+
+def chunk_size_for_mtu(mtu: int) -> int:
+    return max(MIN_CHUNK, min(MAX_CHUNK, mtu - 3))
+
+
+def chunk_message(message: bytes, chunk_size: int, first_seq: int = 0) -> list[bytes]:
+    """Split one message into chunks. `seq` runs from first_seq and wraps at 65536."""
+    if not message:
+        raise ValueError("empty message")
+    if not MIN_CHUNK <= chunk_size <= MAX_CHUNK:
+        raise ValueError("bad chunk size")
+    room = chunk_size - CHUNK_HEADER
+    chunks = []
+    for start in range(0, len(message), room):
+        flags = (FLAG_FIRST if start == 0 else 0) | (FLAG_LAST if start + room >= len(message) else 0)
+        seq = (first_seq + len(chunks)) & 0xFFFF
+        chunks.append(bytes([flags]) + struct.pack(">H", seq) + message[start:start + room])
+    return chunks
+
+
+def abort_chunk(seq: int) -> bytes:
+    return bytes([FLAG_ABORT]) + struct.pack(">H", seq & 0xFFFF)
+
+
+class ReassemblyError(Exception):
+    def __init__(self, code: str):
+        super().__init__(code)
+        self.code = code
+
+
+class Reassembler:
+    """Receiver side of SPEC §10.2.4. One instance per direction and connection."""
+
+    def __init__(self, limit: int):
+        self.limit = limit
+        self.expected = 0
+        self.buffer = bytearray()
+
+    def feed(self, chunk: bytes):
+        """Returns a complete message, or None. Raises ReassemblyError (the caller closes the link)."""
+        if len(chunk) < CHUNK_HEADER:
+            raise ReassemblyError("short_chunk")
+        if len(chunk) > self.limit:
+            raise ReassemblyError("too_large")
+        flags, seq, payload = chunk[0], struct.unpack(">H", chunk[1:3])[0], chunk[3:]
+        if flags & 0xF8 or (flags & FLAG_ABORT and (flags != FLAG_ABORT or payload)):
+            raise ReassemblyError("bad_flags")
+        if seq != self.expected:
+            raise ReassemblyError("bad_seq")
+        if flags & FLAG_ABORT:
+            raise ReassemblyError("abort")
+        if not payload:
+            raise ReassemblyError("empty_chunk")
+        first = bool(flags & FLAG_FIRST)
+        if first and self.buffer:
+            raise ReassemblyError("unexpected_first")
+        if not first and not self.buffer:
+            raise ReassemblyError("unexpected_continuation")
+        if len(self.buffer) + len(payload) > MAX_MESSAGE:
+            raise ReassemblyError("message_too_big")
+        self.buffer += payload
+        self.expected = (seq + 1) & 0xFFFF
+        if flags & FLAG_LAST:
+            message, self.buffer = bytes(self.buffer), bytearray()
+            return message
+        return None
+
+
+def info_value(device_id: str, max_chunk: int, roles: list[str], tags: list[bytes]) -> bytes:
+    """The `info` characteristic value (SPEC §10.2.2)."""
+    return ref.canonical_bytes({"deviceId": device_id, "maxChunk": max_chunk, "protocolVersion": PROTOCOL_VERSION,
+                                "roles": sorted(roles), "tags": [t.hex() for t in tags[:8]]})
