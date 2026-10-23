@@ -39,21 +39,21 @@ private final class Recorder: RelayAPI, @unchecked Sendable {
             "method": .string("GET"),
             "path": .string("/v1/m/\(inner.mailbox)/batches?after=\(cursor)&limit=\(limit)"),
             "status": .int(200),
-            "response": .object(["batches": .array(batches), "more": .bool(page.more)]),
+            "response": .object(["epoch": page.epoch.map(JSONValue.string) ?? .null, "batches": .array(batches), "more": .bool(page.more)]),
         ]))
         return page
     }
 
-    func push(_ blob: [UInt8]) async throws -> Int64 {
-        let cursor = try await inner.push(blob)
+    func push(_ blob: [UInt8]) async throws -> RelayPushAck {
+        let ack = try await inner.push(blob)
         add(.object([
             "method": .string("POST"),
             "path": .string("/v1/m/\(inner.mailbox)/batches"),
             "status": .int(201),
             "bodyHex": .string(Hex.encode(blob)),
-            "response": .object(["cursor": .int(cursor)]),
+            "response": .object(["cursor": .int(ack.cursor), "epoch": ack.epoch.map(JSONValue.string) ?? .null]),
         ]))
-        return cursor
+        return ack
     }
 
     private func add(_ entry: JSONValue) { lock.withLock { log.append(entry) } }
@@ -101,13 +101,12 @@ struct RelayVectorTests {
         #expect(RelayCrypto.open(blob: hexBytes(v["wrongAadBlobHex"]), batchKey: key, mailboxId: wrong) != nil)
     }
 
-    @Test func scenarioRequestsMatchInOrder() async throws {
+    /// Replays a scenario of the vector file. Returns the stores and the differences from the file.
+    private func replay(_ name: String, followsEpoch: Bool = true) async throws -> (stores: [String: InMemoryOpStore], issues: [String]) {
         let v = try relayVector()
         let key = hexBytes(v["groupKeyHex"])
         let group = v["group"]!.stringValue!
-        let scenario = try #require(v["scenario"])
-        #expect(scenario["authorization"]?.stringValue == "Bearer " + RelayCrypto.relayToken(groupKey: key))
-
+        let scenario = try #require(v[name])
         let all = v["ops"]!.arrayValue!
         func held(_ refs: [JSONValue]) -> [JSONValue] {
             let wanted = Set(refs.compactMap(\.stringValue))
@@ -115,35 +114,70 @@ struct RelayVectorTests {
         }
         let relay = InMemoryRelay()
         let nonces = NonceCounter()
+        var issues: [String] = []
         var stores: [String: InMemoryOpStore] = [:]
-        for (name, refs) in scenario["initialHeld"]!.objectValue! {
-            let store = InMemoryOpStore(groupId: group, deviceId: "dddddddd-0000-4000-8000-00000000000\(name == "A" ? 1 : name == "B" ? 2 : 3)")
+        // Scenario "scenario" starts with these. The expiry scenario has the same devices.
+        let initial = v["scenario"]!["initialHeld"]!.objectValue!
+        for (device, refs) in initial {
+            let store = InMemoryOpStore(groupId: group, deviceId: "dddddddd-0000-4000-8000-00000000000\(device == "A" ? 1 : device == "B" ? 2 : 3)")
             for op in held(refs.arrayValue!) { await store.insertLocal(op) }
-            stores[name] = store
+            stores[device] = store
         }
-
-        for step in scenario["steps"]!.arrayValue! {
-            let name = step["device"]!.stringValue!
-            let store = try #require(stores[name])
-            #expect(await store.allOps.count == Int(step["heldBefore"]!.intValue!), "\(name) before")
+        let expireBefore = scenario["expireBeforeStep"]?.intValue
+        for (index, step) in scenario["steps"]!.arrayValue!.enumerated() {
+            if Int64(index) == expireBefore { await relay.expireAll() }
+            let device = step["device"]!.stringValue!
+            let store = try #require(stores[device])
+            let tag = "\(name) step \(index) (\(device))"
+            if await store.allOps.count != Int(step["heldBefore"]!.intValue!) { issues.append("\(tag): heldBefore") }
             let recorder = Recorder(InMemoryRelayClient(relay, groupKey: key))
             let result = try await RelaySync(groupId: group, groupKey: key, store: store, api: recorder,
-                                             pageLimit: Int(step["pageLimit"]!.intValue!), nonce: { nonces.next() }).run()
-            #expect(JSONValue.array(recorder.requests) == step["requests"], "\(name) requests")
-            #expect(result.received == Int(step["stored"]!.intValue!))
-            #expect(result.pushedOps == Int(step["sent"]!.intValue!))
+                                             pageLimit: Int(step["pageLimit"]!.intValue!), nonce: { nonces.next() },
+                                             followsEpoch: followsEpoch).run()
+            if JSONValue.array(recorder.requests) != step["requests"] { issues.append("\(tag): requests") }
+            if result.received != Int(step["stored"]!.intValue!) { issues.append("\(tag): stored") }
+            if result.pushedOps != Int(step["sent"]!.intValue!) { issues.append("\(tag): sent") }
             let state = await store.relayState()
-            #expect(state.cursor == step["relayCursor"]!.intValue!)
-            #expect(JSONValue.object(state.vector.mapValues { .int($0) }) == step["relayVector"])
-            #expect(await store.allOps.count == Int(step["heldAfter"]!.intValue!), "\(name) after")
+            if let expected = step["relayEpoch"], (state.epoch.map(JSONValue.string) ?? .null) != expected { issues.append("\(tag): relayEpoch") }
+            if state.cursor != step["relayCursor"]!.intValue! { issues.append("\(tag): relayCursor") }
+            if JSONValue.object(state.vector.mapValues { .int($0) }) != step["relayVector"] { issues.append("\(tag): relayVector") }
+            if await store.allOps.count != Int(step["heldAfter"]!.intValue!) { issues.append("\(tag): heldAfter") }
         }
-
         let refs = Set(scenario["endOpRefs"]!.arrayValue!.compactMap(\.stringValue))
-        for (name, store) in stores {
+        // A device that did not sync after the last write of another device may hold fewer ops (B in the expiry scenario).
+        let lastHeld = Dictionary(scenario["steps"]!.arrayValue!.map { ($0["device"]!.stringValue!, Int($0["heldAfter"]!.intValue!)) },
+                                  uniquingKeysWith: { _, last in last })
+        for (device, store) in stores where lastHeld[device] == refs.count {
             let ops = await store.allOps
-            #expect(Set(ops.map { "\($0["author"]!.stringValue!):\($0["seq"]!.intValue!)" }) == refs, "\(name) end")
-            let balances = fold(groupId: group, ops: ops)["balances"]
-            #expect(balances == scenario["endFoldBalances"], "\(name) balances")
+            if Set(ops.map { "\($0["author"]!.stringValue!):\($0["seq"]!.intValue!)" }) != refs { issues.append("\(name) end ops of \(device)") }
+            if let balances = scenario["endFoldBalances"], fold(groupId: group, ops: ops)["balances"] != balances {
+                issues.append("\(name) end balances of \(device)")
+            }
         }
+        return (stores, issues)
+    }
+
+    @Test func scenarioRequestsMatchInOrder() async throws {
+        let (_, issues) = try await replay("scenario")
+        #expect(issues.isEmpty, "\(issues)")
+    }
+
+    @Test func tokenInTheScenarioIsTheRelayToken() throws {
+        let v = try relayVector()
+        #expect(v["scenario"]?["authorization"]?.stringValue == "Bearer " + RelayCrypto.relayToken(groupKey: hexBytes(v["groupKeyHex"])))
+    }
+
+    @Test func expiryScenarioMatchesInOrder() async throws {
+        let (_, issues) = try await replay("expiryScenario")
+        #expect(issues.isEmpty, "\(issues)")
+    }
+
+    /// Negative control: without the epoch rule the expiry scenario must fail.
+    @Test func expiryScenarioFailsWithoutTheEpochRule() async throws {
+        let (stores, issues) = try await replay("expiryScenario", followsEpoch: false)
+        #expect(!issues.isEmpty)
+        // A kept its old vector, so it never sent seq 3 again and C does not hold the expense of A.
+        let c = try #require(stores["C"])
+        #expect(await c.allOps.count < 5)
     }
 }

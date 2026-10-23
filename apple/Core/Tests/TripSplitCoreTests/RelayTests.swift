@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import TripSplitCore
 
@@ -10,7 +11,7 @@ typealias FakeRelayClient = InMemoryRelayClient
 struct FullMailbox: RelayAPI {
     let inner: FakeRelayClient
     func pull(after cursor: Int64, limit: Int) async throws -> RelayPage { try await inner.pull(after: cursor, limit: limit) }
-    func push(_ blob: [UInt8]) async throws -> Int64 { throw RelayError.full }
+    func push(_ blob: [UInt8]) async throws -> RelayPushAck { throw RelayError.full }
 }
 
 private func device(_ n: Int, ops count: Int, seed: UInt64) async -> InMemoryOpStore {
@@ -234,5 +235,91 @@ struct RelaySyncTests {
             _ = try await RelaySync(groupId: groupId, groupKey: groupKey, store: a, api: full).run()
         }
         #expect(await a.relayState().vector.isEmpty)
+    }
+}
+
+// MARK: - Mailbox epoch (SPEC §10.4.4 step 4)
+
+/// Deletes the mailbox before a push, as the relay does when the retention time ends in the middle of a sync.
+private final class ExpiringBeforePush: RelayAPI, @unchecked Sendable {
+    private let inner: InMemoryRelayClient
+    private let relay: InMemoryRelay
+    private let always: Bool
+    private let lock = NSLock()
+    private var done = false
+
+    init(_ relay: InMemoryRelay, groupKey: [UInt8], always: Bool) {
+        self.relay = relay
+        self.always = always
+        inner = InMemoryRelayClient(relay, groupKey: groupKey)
+    }
+
+    func pull(after cursor: Int64, limit: Int) async throws -> RelayPage { try await inner.pull(after: cursor, limit: limit) }
+
+    func push(_ blob: [UInt8]) async throws -> RelayPushAck {
+        let first = lock.withLock { let was = done; done = true; return !was }
+        if first || always { await relay.expireAll() }
+        return try await inner.push(blob)
+    }
+}
+
+@Suite("Relay epoch")
+struct RelayEpochTests {
+    @Test func theEpochIsKept() async throws {
+        let relay = FakeRelay()
+        let a = await device(1, ops: 3, seed: 30)
+        _ = try await sync(a, with: relay)
+        #expect(await a.relayState().epoch == "00000000000000000000000000000001")
+    }
+
+    @Test func aDeletedMailboxIsFilledAgain() async throws {
+        let relay = FakeRelay()
+        let a = await device(1, ops: 20, seed: 31)
+        _ = try await sync(a, with: relay)
+        await relay.expireAll()
+        let again = try await sync(a, with: relay)
+        // The GET answer has no epoch, so cursor and vector are reset. Then A sends everything again.
+        #expect(again.epochResets == 1)
+        #expect(again.pushedOps == 24)
+        let fresh = InMemoryOpStore(groupId: groupId, deviceId: deviceId(2))
+        #expect(try await sync(fresh, with: relay).received == 24)
+    }
+
+    @Test func aMailboxMadeAgainDuringThePushRunsTheSyncOnceMore() async throws {
+        let relay = FakeRelay()
+        let a = await device(1, ops: 4, seed: 32)
+        _ = try await sync(a, with: relay)
+        let c = await device(2, ops: 3, seed: 32)
+        let api = ExpiringBeforePush(relay, groupKey: groupKey, always: false)
+        let result = try await RelaySync(groupId: groupId, groupKey: groupKey, store: c, api: api).run()
+        #expect(result.epochResets == 1)
+        #expect(await c.relayState().epoch == "00000000000000000000000000000002")
+        // C sent its own ops into the new mailbox, then the ops of A in the second run.
+        let fresh = InMemoryOpStore(groupId: groupId, deviceId: deviceId(3))
+        #expect(try await sync(fresh, with: relay).received == 8 + 3)
+    }
+
+    @Test func theRestartRunsAtMostOnce() async throws {
+        let relay = FakeRelay()
+        let a = await device(1, ops: 4, seed: 33)
+        _ = try await sync(a, with: relay)
+        let c = await device(2, ops: 3, seed: 33)
+        let before = await relay.pushes
+        let api = ExpiringBeforePush(relay, groupKey: groupKey, always: true)
+        let result = try await RelaySync(groupId: groupId, groupKey: groupKey, store: c, api: api).run()
+        #expect(result.epochResets == 2)
+        #expect(await relay.pushes - before == 2)
+    }
+
+    @Test func withoutTheRuleAnExpiredMailboxLosesOps() async throws {
+        let relay = FakeRelay()
+        let a = await device(1, ops: 10, seed: 34)
+        _ = try await sync(a, with: relay)
+        await relay.expireAll()
+        let result = try await RelaySync(groupId: groupId, groupKey: groupKey, store: a,
+                                         api: FakeRelayClient(relay, groupKey: groupKey), followsEpoch: false).run()
+        #expect(result.pushedOps == 0)
+        let fresh = InMemoryOpStore(groupId: groupId, deviceId: deviceId(2))
+        #expect(try await sync(fresh, with: relay).received == 0)
     }
 }

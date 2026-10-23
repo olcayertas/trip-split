@@ -55,9 +55,10 @@ struct RelayStoreTests {
         try await guest.join(try await host.invite(for: id))
         let ops = try await host.relayTargets()[0].store.opsMissing(for: [:])
         let store = try #require(try await guest.relayTargets().first).store
-        let summary = try await store.receive(ops, wallMillis: wall(), relay: RelayState(cursor: 7, vector: [host.deviceId: 1]))
+        let epoch = "0000000000000000000000000000000a"
+        let summary = try await store.receive(ops, wallMillis: wall(), relay: RelayState(epoch: epoch, cursor: 7, vector: [host.deviceId: 1]))
         #expect(summary.stored == 1)
-        #expect(try await store.relayState() == RelayState(cursor: 7, vector: [host.deviceId: 1]))
+        #expect(try await store.relayState() == RelayState(epoch: epoch, cursor: 7, vector: [host.deviceId: 1]))
         // A repeat is a duplicate and still saves the state.
         let repeated = try await store.receive(ops, wallMillis: wall(), relay: RelayState(cursor: 8, vector: [host.deviceId: 1]))
         #expect(repeated.duplicates == 1 && repeated.stored == 0)
@@ -71,7 +72,7 @@ struct RelayStoreTests {
         let pool = try DatabasePool(path: path)
         // Apply only the first migration, then add a group like an older build did.
         let all = AppDatabase.migrator
-        #expect(all.migrations.contains("v2-relay"))
+        #expect(all.migrations.contains("v2-relay") && all.migrations.contains("v3-relay-epoch"))
         try all.migrate(pool, upTo: "v1")
         try await pool.write { db in
             try db.execute(sql: "INSERT INTO groups (group_id, group_key, next_seq, created_at) VALUES ('g1', x'00', 1, 1)")
@@ -83,5 +84,7 @@ struct RelayStoreTests {
         }
         #expect(cursor == 0)
         #expect(vector == "{}")
+        let epoch: String? = try await pool.read { try String.fetchOne($0, sql: "SELECT relay_epoch FROM groups WHERE group_id = 'g1'") }
+        #expect(epoch == nil)
     }
 }
