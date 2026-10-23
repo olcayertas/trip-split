@@ -60,7 +60,14 @@ public struct ExpenseDraft: Equatable, Sendable {
     public func amountMinor() -> Int64? { AmountFormat.parse(amountText, currency: currency) }
 
     /// The rate that goes into the op: "1" for the base currency.
-    public func effectiveRate(baseCurrency: String) -> String { currency == baseCurrency ? "1" : rateText }
+    /// A comma works as the decimal separator, as in the amount (the decimal pad of Turkish shows ",").
+    public func effectiveRate(baseCurrency: String) -> String {
+        currency == baseCurrency ? "1" : ExpenseDraft.normalizedRate(rateText)
+    }
+
+    public static func normalizedRate(_ text: String) -> String {
+        String(text.trimmingSpaces().map { $0 == "," ? "." : $0 })
+    }
 
     /// For exact mode: amount minus the sum of the typed shares. nil when the amount is not valid.
     public func exactRemaining() -> Int64? {

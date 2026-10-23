@@ -473,6 +473,22 @@ struct DraftTests {
         #expect(isValidBody(type: "expense.add", body: try d.addBody(expenseId: "e0000000-0000-4000-8000-000000000001", baseCurrency: "TRY")))
     }
 
+    @Test func commaWorksAsDecimalSeparator() throws {
+        // Amount: "," and "." both parse, in every currency exponent.
+        #expect(AmountFormat.parse("30,50", currency: "TRY") == 3050)
+        #expect(AmountFormat.parse("30.50", currency: "TRY") == 3050)
+        #expect(AmountFormat.parse("1,234", currency: "KWD") == 1234)
+        #expect(AmountFormat.parse("1,5", currency: "JPY") == nil)
+        // Rate: the same.
+        var d = ExpenseDraft(currency: "USD", date: "2026-10-20", paidBy: a, members: [a])
+        d.title = "x"
+        d.amountText = "10,50"
+        d.rateText = "34,75"
+        let money = try d.money(baseCurrency: "TRY")
+        #expect(money["rate"] == .string("34.75"))
+        #expect(money["amountMinor"] == .int(1050))
+    }
+
     @Test func baseCurrencyForcesRateOne() throws {
         var d = ExpenseDraft(currency: "EUR", date: "2026-10-20", paidBy: a, members: [a])
         d.title = "x"

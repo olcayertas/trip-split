@@ -70,7 +70,7 @@ struct ExpenseEditorView: View {
                         }
                         .m3Row()
                         if let minor = draft.amountMinor(), let converted = try? convert(
-                            amountMinor: minor, currency: draft.currency, rate: draft.rateText, base: base)
+                            amountMinor: minor, currency: draft.currency, rate: ExpenseDraft.normalizedRate(draft.rateText), base: base)
                         {
                             Text("≈ \(Fmt.money(converted, base))").m3(M3Type.bodyMedium).foregroundStyle(M3Color.onSurfaceVariant).m3Row()
                         }

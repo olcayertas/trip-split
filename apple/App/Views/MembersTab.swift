@@ -80,6 +80,7 @@ struct MembersTab: View {
             }
         }
         .m3Screen()
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 56) }
         .task(id: state.members) {
             let history = (try? await repository.history(of: groupId)) ?? []
             lostMember = lostClaim(history: history, deviceId: repository.deviceId, state: state)
