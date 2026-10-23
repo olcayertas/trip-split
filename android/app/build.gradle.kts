@@ -85,6 +85,9 @@ dependencies {
     implementation(libs.navigation.compose)
     debugImplementation(libs.compose.ui.tooling)
 
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
     testImplementation(libs.junit4)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)

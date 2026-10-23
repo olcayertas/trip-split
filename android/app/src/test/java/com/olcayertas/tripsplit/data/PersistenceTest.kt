@@ -27,7 +27,7 @@ class FakeMarker(var present: Boolean = false) : InstallMarker {
 }
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = android.app.Application::class)
 class PersistenceTest {
     private lateinit var context: Context
     private lateinit var db: TripSplitDatabase

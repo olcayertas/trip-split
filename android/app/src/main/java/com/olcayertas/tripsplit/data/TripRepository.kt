@@ -8,7 +8,9 @@ import com.olcayertas.tripsplit.core.OpBodies
 import com.olcayertas.tripsplit.core.planEarlierExpenses
 import com.olcayertas.tripsplit.core.fold
 import com.olcayertas.tripsplit.data.db.TripSplitDatabase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
@@ -40,10 +42,13 @@ class TripRepository(
     fun observeFold(groupId: String): Flow<FoldState> =
         db.ops().observeOpJson(groupId)
             .map { rows -> fold(groupId, rows.map { Json.parseToJsonElement(it).jsonObject }) }
+            // The fold of a long log is CPU work. Keep it off the main thread.
+            .flowOn(Dispatchers.Default)
 
     /** The raw ops of one group, for the history. */
     fun observeOps(groupId: String): Flow<List<JsonObject>> =
         db.ops().observeOpJson(groupId).map { rows -> rows.map { Json.parseToJsonElement(it).jsonObject } }
+            .flowOn(Dispatchers.Default)
 
     /**
      * Adds a member (PLAN §7.1). With [includeEarlier] the new member also joins the split of every
