@@ -77,7 +77,7 @@ extension GroupView {
     /// PLAN §7.1: a member that is new to the group can also join the earlier expenses. Ask once.
     fileprivate func offerNewcomerChoice(_ memberId: String) {
         let plan = newcomerPlan(memberId)
-        guard !plan.edits.isEmpty || !plan.exactExpenses.isEmpty else { return }
+        guard !plan.edits.isEmpty || !plan.untouched.isEmpty else { return }
         Task {
             // A sheet may still be closing; wait a moment so the dialog is not lost.
             try? await Task.sleep(for: .milliseconds(600))
@@ -93,8 +93,8 @@ extension GroupView {
 
     fileprivate func newcomerMessage(_ plan: NewcomerPlan) -> String {
         var text = String(localized: "From now on: earlier expenses do not change. Also earlier expenses: \(plan.edits.count) expenses change.")
-        if !plan.exactExpenses.isEmpty {
-            text += "\n" + String(localized: "These expenses have exact amounts and stay as they are. Edit them by hand: \(plan.exactExpenses.map(\.title).joined(separator: ", ")).")
+        if !plan.untouched.isEmpty {
+            text += "\n" + String(localized: "These expenses stay as they are (exact amounts or a full split). Edit them by hand: \(plan.untouched.map(\.title).joined(separator: ", ")).")
         }
         return text
     }
