@@ -15,9 +15,10 @@ data class Fork(val groupId: String, val author: String, val seq: Long, val fore
 
 /**
  * SPEC §10.4.4. [cursor] is the highest relay cursor the device has read. [vector] maps an author to the
- * highest `n` such that the relay holds seq `1..n` of that author, as far as the device knows.
+ * highest `n` such that the relay holds seq `1..n` of that author, as far as the device knows. [epoch] is the
+ * epoch of the mailbox that the cursor and the vector are true for (SPEC §10.4.4 step 4). Null: not known yet.
  */
-data class RelayState(val cursor: Long = 0, val vector: Map<String, Long> = emptyMap())
+data class RelayState(val cursor: Long = 0, val vector: Map<String, Long> = emptyMap(), val epoch: String? = null)
 
 class StoreResult(val stored: List<JsonObject>, val skipped: Int, val forks: List<Fork>)
 

@@ -51,12 +51,12 @@ class RoomOpStore(
     override suspend fun relayState(groupId: String): RelayState {
         val g = db.groups().get(groupId) ?: return RelayState()
         val vector = Json.parseToJsonElement(g.relayVector).jsonObject.mapValues { it.value.jsonPrimitive.content.toLong() }
-        return RelayState(g.relayCursor, vector)
+        return RelayState(g.relayCursor, vector, g.relayEpoch)
     }
 
     override suspend fun saveRelayState(groupId: String, state: RelayState) {
         val vector = JsonObject(state.vector.mapValues { JsonPrimitive(it.value) })
-        db.groups().setRelay(groupId, state.cursor, vector.toString())
+        db.groups().setRelay(groupId, state.cursor, vector.toString(), state.epoch)
     }
 
     override suspend fun insertFromRelay(

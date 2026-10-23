@@ -29,17 +29,37 @@ class RelaySync(
     private suspend fun lockOf(groupId: String): Mutex = locksGuard.withLock { locks.getOrPut(groupId) { Mutex() } }
 
     suspend fun sync(groupId: String): RelaySyncResult = lockOf(groupId).withLock {
-        val group = device.store.group(groupId) ?: return@withLock RelaySyncResult(0, 0, 0)
+        val first = pass(groupId)
+        // SPEC §10.4.4 step 4: the relay made the mailbox again during the push. Run the whole sync once more.
+        if (!first.remade) return@withLock first.result
+        val second = pass(groupId).result
+        RelaySyncResult(
+            first.result.storedOps + second.storedOps,
+            first.result.pushedOps + second.pushedOps,
+            first.result.pushedBatches + second.pushedBatches,
+        )
+    }
+
+    private class Pass(val result: RelaySyncResult, val remade: Boolean)
+
+    private suspend fun pass(groupId: String): Pass {
+        val group = device.store.group(groupId) ?: return Pass(RelaySyncResult(0, 0, 0), false)
         val mailbox = mailboxId(group.key)
         val token = relayToken(group.key)
         val key = batchKey(group.key, groupId)
 
         var stored = 0
         while (true) {
-            val after = device.store.relayState(groupId).cursor
-            val page = api.pull(mailbox, token, after, pageLimit)
+            val position = device.store.relayState(groupId)
+            val page = api.pull(mailbox, token, position.cursor, pageLimit)
+            if (page.epoch != position.epoch) {
+                // SPEC §10.4.4 step 4. The cursor and the vector belong to another mailbox. Start again.
+                val reset = position.cursor > 0 || position.vector.isNotEmpty()
+                device.store.saveRelayState(groupId, if (reset) RelayState(epoch = page.epoch) else position.copy(epoch = page.epoch))
+                if (reset) continue
+            }
             for (batch in page.batches) {
-                if (batch.cursor <= after) continue
+                if (batch.cursor <= position.cursor) continue
                 val ops = openBatch(key, mailbox, batch.blob)
                 stored += device.receiveFromRelay(groupId, ops, batch.cursor).stored
             }
@@ -51,13 +71,18 @@ class RelaySync(
         var pushedBatches = 0
         var state = device.store.relayState(groupId)
         for (batch in splitIntoBatches(device.store.missingFor(groupId, state.vector))) {
-            api.push(mailbox, token, sealBatch(key, mailbox, batch, nonce()))
-            state = RelayState(state.cursor, advanceRelayVector(state.vector, batch))
-            device.store.saveRelayState(groupId, state)
+            val posted = api.push(mailbox, token, sealBatch(key, mailbox, batch, nonce()))
             pushedOps += batch.size
             pushedBatches++
+            if (state.epoch != null && state.epoch != posted.epoch) {
+                // The relay deleted the mailbox and a later POST made it again. What we know is void.
+                device.store.saveRelayState(groupId, RelayState(epoch = posted.epoch))
+                return Pass(RelaySyncResult(stored, pushedOps, pushedBatches), remade = true)
+            }
+            state = RelayState(state.cursor, advanceRelayVector(state.vector, batch), posted.epoch)
+            device.store.saveRelayState(groupId, state)
         }
-        RelaySyncResult(stored, pushedOps, pushedBatches)
+        return Pass(RelaySyncResult(stored, pushedOps, pushedBatches), remade = false)
     }
 }
 
