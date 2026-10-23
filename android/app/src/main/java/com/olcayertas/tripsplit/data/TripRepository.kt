@@ -29,6 +29,8 @@ class GroupSummary(val groupId: String, val state: FoldState)
 class TripRepository(
     private val db: TripSplitDatabase,
     val device: Device,
+    /** Where the folds run. Tests pass an empty context, so no thread switch happens. */
+    private val computeContext: kotlin.coroutines.CoroutineContext = Dispatchers.Default,
 ) {
     suspend fun createGroup(name: String, baseCurrency: String, creatorName: String): CreatedGroup =
         device.createGroup(name, baseCurrency, creatorName)
@@ -43,12 +45,12 @@ class TripRepository(
         db.ops().observeOpJson(groupId)
             .map { rows -> fold(groupId, rows.map { Json.parseToJsonElement(it).jsonObject }) }
             // The fold of a long log is CPU work. Keep it off the main thread.
-            .flowOn(Dispatchers.Default)
+            .flowOn(computeContext)
 
     /** The raw ops of one group, for the history. */
     fun observeOps(groupId: String): Flow<List<JsonObject>> =
         db.ops().observeOpJson(groupId).map { rows -> rows.map { Json.parseToJsonElement(it).jsonObject } }
-            .flowOn(Dispatchers.Default)
+            .flowOn(computeContext)
 
     /**
      * Adds a member (PLAN §7.1). With [includeEarlier] the new member also joins the split of every
@@ -66,6 +68,27 @@ class TripRepository(
         val plan = planEarlierExpenses(foldNow(groupId).expenses, memberId)
         for (edit in plan.edits) append(groupId, "expense.edit", OpBodies.expenseEdit(edit.expenseId, edit.fields()))
         return plan.untouched
+    }
+
+    /** True when no phone has taken [memberId] before (PLAN §7.1). */
+    suspend fun isFirstClaim(groupId: String, memberId: String): Boolean =
+        com.olcayertas.tripsplit.core.isFirstClaim(device.store.ops(groupId), memberId)
+
+    /** This phone takes a member that nobody holds. Returns the expenses it could not change, when [includeEarlier]. */
+    suspend fun claim(groupId: String, memberId: String, includeEarlier: Boolean = false): List<String> {
+        append(groupId, "member.claim", OpBodies.memberRef(memberId))
+        return if (includeEarlier) includeInEarlier(groupId, memberId) else emptyList()
+    }
+
+    /** Any phone may release any claim (SPEC §4.4). */
+    suspend fun release(groupId: String, memberId: String) {
+        append(groupId, "member.unclaim", OpBodies.memberRef(memberId))
+    }
+
+    /** Release the claim of another phone, then claim the member. For a restored phone with a new device id. */
+    suspend fun takeOver(groupId: String, memberId: String) {
+        release(groupId, memberId)
+        claim(groupId, memberId)
     }
 
     fun observeGroupIds(): Flow<List<String>> =

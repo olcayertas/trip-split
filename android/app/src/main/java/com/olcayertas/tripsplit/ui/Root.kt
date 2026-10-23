@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +25,10 @@ import kotlinx.coroutines.launch
 object Routes {
     const val GROUPS = "groups"
     const val CREATE = "create"
+    const val NEARBY = "nearby"
+    const val JOIN = "join?link={link}"
+
+    fun join(link: String? = null) = "join?link=" + android.net.Uri.encode(link.orEmpty())
     const val GROUP = "group/{groupId}"
     const val EXPENSE = "group/{groupId}/expense?expenseId={expenseId}"
 
@@ -57,9 +62,17 @@ fun Root(container: AppContainer) {
 private fun AppNav(container: AppContainer, identity: DeviceIdentity) {
     val nav = rememberNavController()
     val repo = container.repository
+    // A tripsplit://join link from outside the app opens the join screen with the link filled in.
+    val pending by container.pendingInvite.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(pending) {
+        pending?.let {
+            container.pendingInvite.value = null
+            nav.navigate(Routes.join(it))
+        }
+    }
     NavHost(nav, startDestination = Routes.GROUPS) {
         composable(Routes.GROUPS) {
-            GroupsScreen(repo, identity.deviceId, onCreate = { nav.navigate(Routes.CREATE) }, onOpen = { nav.navigate(Routes.group(it)) })
+            GroupsScreen(repo, identity.deviceId, onCreate = { nav.navigate(Routes.CREATE) }, onJoin = { nav.navigate(Routes.join()) }, onOpen = { nav.navigate(Routes.group(it)) })
         }
         composable(Routes.CREATE) {
             CreateGroupScreen(
@@ -73,10 +86,16 @@ private fun AppNav(container: AppContainer, identity: DeviceIdentity) {
             GroupScreen(
                 repo, groupId, identity,
                 onBack = { nav.popBackStack() },
+                onNearby = { nav.navigate(Routes.NEARBY) },
                 onAddExpense = { nav.navigate(Routes.expense(groupId)) },
                 onEditExpense = { nav.navigate(Routes.expense(groupId, it)) },
             )
         }
+        composable(Routes.JOIN) { entry ->
+            val link = entry.arguments?.getString("link").orEmpty().ifEmpty { null }
+            JoinScreen(repo, link, onBack = { nav.popBackStack() }, onOpenNearby = { nav.navigate(Routes.NEARBY) { popUpTo(Routes.GROUPS) } })
+        }
+        composable(Routes.NEARBY) { NearbyScreen(container.nearby, onBack = { nav.popBackStack() }) }
         composable(Routes.EXPENSE) { entry ->
             val groupId = entry.arguments!!.getString("groupId")!!
             val expenseId = entry.arguments!!.getString("expenseId").orEmpty().ifEmpty { null }

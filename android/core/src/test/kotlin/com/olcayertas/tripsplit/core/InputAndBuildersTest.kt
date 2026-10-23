@@ -135,4 +135,20 @@ class InputAndBuildersTest {
         assertEquals("Dinner", h[0].subject)
         assertEquals("Ayşe", h[2].subject)
     }
+
+    @Test
+    fun firstClaimDetection() {
+        fun op(type: String, body: JsonObject) = buildJsonObject {
+            put("type", kotlinx.serialization.json.JsonPrimitive(type)); put("body", body)
+        }
+        val m = "20000000-0000-4000-8000-000000000002"
+        val creator = "20000000-0000-4000-8000-000000000001"
+        val create = op("group.create", buildJsonObject { put("creatorMemberId", kotlinx.serialization.json.JsonPrimitive(creator)) })
+        val add = op("member.add", OpBodies.memberAdd(m, "Ayşe"))
+        assertTrue(isFirstClaim(listOf(create, add), m))
+        assertTrue(!isFirstClaim(listOf(create, add), creator))
+        assertTrue(!isFirstClaim(listOf(create, add, op("member.claim", OpBodies.memberRef(m))), m))
+        assertTrue(!isFirstClaim(listOf(create, add, op("member.unclaim", OpBodies.memberRef(m))), m))
+        assertTrue(isFirstClaim(listOf(create, add, op("member.claim", OpBodies.memberRef(creator))), m))
+    }
 }

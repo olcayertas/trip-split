@@ -68,6 +68,8 @@ class SyncSession(
     /** `hello.maxChunk`: 0 on LAN. */
     private val maxChunk: Long = 0,
     private val admission: SessionAdmission? = null,
+    /** Called with the hello of the peer, before the ops flow. BLE uses it to set the send chunk size. */
+    private val onPeerHello: (Hello) -> Unit = {},
     private val random: SecureRandom = SecureRandom(),
 ) {
     private lateinit var group: GroupKey
@@ -184,6 +186,7 @@ class SyncSession(
                 !gotHello -> {
                     if (message !is Hello) throw SessionException("first frame is not hello")
                     checkHello(message)
+                    onPeerHello(message)
                     gotHello = true
                     peerVector.complete(message.vector)
                 }

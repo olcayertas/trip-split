@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -49,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.olcayertas.tripsplit.R
 import com.olcayertas.tripsplit.core.ExpenseState
@@ -70,6 +72,7 @@ fun GroupScreen(
     groupId: String,
     identity: DeviceIdentity,
     onBack: () -> Unit,
+    onNearby: () -> Unit,
     onAddExpense: () -> Unit,
     onEditExpense: (String) -> Unit,
 ) {
@@ -84,6 +87,7 @@ fun GroupScreen(
             TopAppBar(
                 title = { Text(s?.group?.name ?: "…") },
                 navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
+                actions = { IconButton(onNearby) { Icon(Icons.Filled.Wifi, stringResource(R.string.nearby_title)) } },
             )
         },
         snackbarHost = { SnackbarHost(snack) },
@@ -119,9 +123,9 @@ fun GroupScreen(
             return@Scaffold
         }
         when (tab) {
-            0 -> ExpensesTab(s, modifier, onEditExpense)
+            0 -> ExpensesTab(s, identity.deviceId, modifier, onEditExpense) { tab = 2 }
             1 -> BalancesTab(s, repo, groupId, identity.deviceId, modifier)
-            2 -> MembersTab(s, repo, groupId, identity.deviceId, modifier) { msg -> scope.launch { snack.showSnackbar(msg) } }
+            2 -> MembersTab(s, repo, groupId, identity, modifier) { msg -> scope.launch { snack.showSnackbar(msg) } }
             else -> HistoryTab(buildHistory(ops), s, modifier)
         }
     }
@@ -130,14 +134,16 @@ fun GroupScreen(
 private fun nameOf(s: FoldState, id: String) = s.members.firstOrNull { it.id == id }?.name ?: "?"
 
 @Composable
-private fun ExpensesTab(s: FoldState, modifier: Modifier, onEdit: (String) -> Unit) {
+private fun ExpensesTab(s: FoldState, deviceId: String, modifier: Modifier, onEdit: (String) -> Unit, onChooseMember: () -> Unit) {
     val base = s.group!!.baseCurrency
     val list = s.expenses.filter { !it.deleted }.sortedWith(compareByDescending<ExpenseState> { it.date }.thenBy { it.id })
-    if (list.isEmpty()) {
+    val noMember = s.members.none { it.claimedBy == deviceId }
+    if (list.isEmpty() && !noMember) {
         EmptyState(stringResource(R.string.expenses_empty_title), stringResource(R.string.expenses_empty_body), modifier)
         return
     }
     LazyColumn(modifier, contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (noMember) item { ClaimBanner(onChooseMember) }
         items(list, key = { it.id }) { e ->
             val amount = e.money["amountMinor"]!!.jsonPrimitive.content.toLong()
             val cur = e.money["currency"]!!.jsonPrimitive.content
@@ -281,32 +287,81 @@ private fun historyText(h: HistoryEntry): String {
 }
 
 @Composable
+fun ClaimBanner(onClick: () -> Unit) {
+    Card(
+        Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+    ) {
+        Text(stringResource(R.string.not_claimed), Modifier.padding(16.dp), style = MaterialTheme.typography.titleSmall)
+    }
+}
+
+@Composable
 private fun MembersTab(
-    s: FoldState, repo: TripRepository, groupId: String, deviceId: String, modifier: Modifier, notify: (String) -> Unit,
+    s: FoldState, repo: TripRepository, groupId: String, identity: DeviceIdentity, modifier: Modifier, notify: (String) -> Unit,
 ) {
+    val deviceId = identity.deviceId
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
     var adding by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<MemberState?>(null) }
+    var firstClaim by remember { mutableStateOf<MemberState?>(null) }
+    var takeOver by remember { mutableStateOf<MemberState?>(null) }
+    var inviteText by remember { mutableStateOf<String?>(null) }
     val hasExpenses = s.expenses.any { !it.deleted }
+    val noMember = s.members.none { it.claimedBy == deviceId }
     LazyColumn(modifier, contentPadding = PaddingValues(bottom = 24.dp)) {
+        if (noMember) item { Column(Modifier.padding(16.dp)) { ClaimBanner {} } }
         items(s.members, key = { it.id }) { m ->
+            val mine = m.claimedBy == deviceId
+            val other = m.claimedBy != null && !mine
+            val fromEarlier = m.claimedBy != null && m.claimedBy in identity.previousIds
             ListItem(
                 headlineContent = {
                     Text(
-                        m.name + if (m.claimedBy == deviceId) " " + stringResource(R.string.you_suffix) else "",
+                        m.name + if (mine) " " + stringResource(R.string.you_suffix) else "",
                         textDecoration = if (m.removed) TextDecoration.LineThrough else null,
                     )
                 },
-                supportingContent = if (m.removed) ({ Text(stringResource(R.string.removed_member)) }) else null,
+                supportingContent = when {
+                    m.removed -> ({ Text(stringResource(R.string.removed_member)) })
+                    fromEarlier -> ({ Text(stringResource(R.string.member_was_yours)) })
+                    other -> ({ Text(stringResource(R.string.member_other_phone)) })
+                    else -> null
+                },
                 trailingContent = {
-                    if (!m.removed) TextButton({ renaming = m }) { Text(stringResource(R.string.rename)) }
+                    Row {
+                        if (!m.removed) TextButton({ renaming = m }) { Text(stringResource(R.string.rename)) }
+                        when {
+                            m.removed -> {}
+                            mine -> TextButton({ scope.launch { repo.release(groupId, m.id) } }) { Text(stringResource(R.string.claim_release)) }
+                            other -> TextButton({ takeOver = m }, Modifier.testTag("takeover_" + m.name)) { Text(stringResource(R.string.takeover_action)) }
+                            else -> TextButton(
+                                {
+                                    scope.launch {
+                                        if (hasExpenses && repo.isFirstClaim(groupId, m.id)) firstClaim = m else repo.claim(groupId, m.id)
+                                    }
+                                },
+                                Modifier.testTag("claim_" + m.name),
+                            ) { Text(stringResource(R.string.claim_action)) }
+                        }
+                    }
                 },
             )
         }
-        item { TextButton({ adding = true }, Modifier.padding(horizontal = 8.dp)) { Text(stringResource(R.string.add_member)) } }
+        item {
+            Row(Modifier.padding(horizontal = 8.dp)) {
+                TextButton({ adding = true }) { Text(stringResource(R.string.add_member)) }
+                TextButton({
+                    scope.launch {
+                        repo.device.store.group(groupId)?.let { inviteText = com.olcayertas.tripsplit.core.makeInvite(it.groupId, it.key) }
+                    }
+                }, Modifier.testTag("invite")) { Text(stringResource(R.string.invite_action)) }
+            }
+        }
     }
+    inviteText?.let { InviteSheet(it) { inviteText = null } }
     if (adding) {
-        val context = androidx.compose.ui.platform.LocalContext.current
         AddMemberDialog(
             hasExpenses = hasExpenses,
             onDismiss = { adding = false },
@@ -325,5 +380,20 @@ private fun MembersTab(
             onDismiss = { renaming = null },
             onSave = { name -> renaming = null; scope.launch { repo.append(groupId, "member.rename", OpBodies.memberRename(m.id, name)) } },
         )
+    }
+    firstClaim?.let { m ->
+        FirstClaimDialog(m.name, onDismiss = { firstClaim = null }, onConfirm = { earlier ->
+            firstClaim = null
+            scope.launch {
+                val left = repo.claim(groupId, m.id, includeEarlier = earlier)
+                if (left.isNotEmpty()) notify(context.getString(R.string.untouched_exact, left.size))
+            }
+        })
+    }
+    takeOver?.let { m ->
+        TakeOverDialog(m.name, fromEarlierId = m.claimedBy in identity.previousIds, onDismiss = { takeOver = null }, onConfirm = {
+            takeOver = null
+            scope.launch { repo.takeOver(groupId, m.id) }
+        })
     }
 }
