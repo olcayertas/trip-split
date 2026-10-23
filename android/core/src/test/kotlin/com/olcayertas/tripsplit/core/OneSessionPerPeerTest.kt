@@ -51,16 +51,18 @@ class OneSessionPerPeerTest {
 
         val lanSessions = AtomicInteger()
         val bleSessions = AtomicInteger()
+        // A connection that closes before the handshake is not a session: the central read `info` and left.
+        fun counts(o: SessionOutcome) = !(o is SessionOutcome.Failed && o.reason in setOf("disconnected", "closed"))
 
         // B: a Wi-Fi listener that DNS-SD announces, and a BLE peripheral. B never dials.
-        val listener = LanListener(b.device, b.admission, freePort(), onOutcome = { lanSessions.incrementAndGet() }, bindAddress = LOOPBACK)
+        val listener = LanListener(b.device, b.admission, freePort(), onOutcome = { if (counts(it)) lanSessions.incrementAndGet() }, bindAddress = LOOPBACK)
         val bPort = listener.start(scope)
         val net = FakeNetwork()
         net.discovery().start(
             bPort, encodeTxt(idB, runBlocking { b.store.groups() }), instanceName(idB),
         ) {}
         val radio = FakeRadio(185)
-        val peripheral = BlePeripheral(b.device, b.admission, scope, onOutcome = { bleSessions.incrementAndGet() })
+        val peripheral = BlePeripheral(b.device, b.admission, scope, onOutcome = { if (counts(it)) bleSessions.incrementAndGet() })
         radio.sessionFactory = { peripheral.accept(radio.ServerConn()) }
         val bInfo = buildInfo(idB, b.store.groups(), canCentral = false)
 
