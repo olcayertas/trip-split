@@ -112,12 +112,16 @@ There is also a Python peer (`protocol/tools/peer.py`) that syncs with a real ph
 |---|---|---|
 | Core: ops, fold, money, settlement | ✅ | ✅ |
 | Sync engine: crypto, frames, sessions | ✅ | ✅ |
-| Storage | ✅ | 🛠️ |
-| UI | ✅ | 🛠️ |
-| Wi-Fi sync | ✅ | 🛠️ |
-| Bluetooth sync | 🛠️ | 🛠️ |
-| QR invite and member claim | 🛠️ | 🛠️ |
+| Storage | ✅ | ✅ |
+| UI | ✅ | ✅ |
+| Wi-Fi sync | ✅ | ✅ |
+| Bluetooth sync | ✅ | ✅ |
+| QR invite and member claim | ✅ | ✅ |
 | TestFlight and APK | 🛠️ | 🛠️ |
+| Field test on real phones | 🧪 | 🧪 |
+
+✅ means built and tested on simulators and with the reference peer. Real radios come with the
+[field test](docs/FIELD_TEST.md).
 
 Work is tracked in issue [#1](https://github.com/olcayertas/trip-split/issues/1).
 
