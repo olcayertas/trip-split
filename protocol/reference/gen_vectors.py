@@ -1,5 +1,7 @@
 """Write protocol/vectors/*.json from the reference model.
 
+Needs: pip install -r protocol/reference/requirements.txt (AES-GCM for crypto.json).
+
 Run:  python3 protocol/reference/gen_vectors.py          (writes the files)
       python3 protocol/reference/gen_vectors.py --check  (fails if a file would change; used by CI)
 """
@@ -10,6 +12,7 @@ import json
 import sys
 
 import tripsplit_ref as ref
+import tripsplit_wire as wire
 
 # Fixed ids keep the vectors readable. All ids are lowercase UUIDs, as the spec requires.
 GROUP = "00000000-0000-4000-8000-000000000001"
@@ -328,6 +331,97 @@ def session_cases():
                        "aSends": ref.missing_for(vb, a_side), "bSends": ref.missing_for(va, b_side)}]}
 
 
+def crypto_cases():
+    key = bytes(range(32))
+    other_key = bytes([0xEE] * 32)
+    salt_i = bytes.fromhex("0102030405060708090a0b0c0d0e0f10")
+    salt_r = bytes.fromhex("f0e0d0c0b0a090807060504030201000")
+    tag = wire.discovery_tag(key)
+    k_i, dir_i = wire.session_key(key, GROUP, salt_i, salt_r)
+    k_r, dir_r = wire.session_key(key, GROUP, salt_r, salt_i)
+    assert k_i == k_r and {dir_i, dir_r} == {1, 2}
+    log = Log()
+    create(log)
+    messages = [
+        (dir_i, 0, wire.hello(DEV_A, GROUP, {}, T0, 182)),
+        (dir_r, 0, wire.hello(DEV_B, GROUP, {DEV_A: 1}, T0 + 3, 244)),
+        (dir_i, 1, wire.ops_message(log.ops)),
+        (dir_i, 2, wire.done({DEV_A: 1})),
+        (dir_r, 1, wire.done({DEV_A: 1})),
+    ]
+    frames = []
+    for direction, counter, msg in messages:
+        plain = ref.canonical_bytes(msg)
+        frame = wire.seal(k_i, direction, counter, plain)
+        assert wire.open_frame(k_i, direction, counter, frame) == plain
+        frames.append({"direction": direction, "counter": counter, "message": msg,
+                       "plaintextHex": plain.hex(), "frameHex": frame.hex()})
+    hkdf_rfc5869 = wire.hkdf_sha256(bytes.fromhex("0b" * 22), bytes.fromhex("000102030405060708090a0b0c"),
+                                    bytes.fromhex("f0f1f2f3f4f5f6f7f8f9"), 42)
+    assert hkdf_rfc5869.hex().startswith("3cb25f25faacd57a90434f64d0362f2a")  # RFC 5869 test case 1
+    tampered = bytearray(bytes.fromhex(frames[0]["frameHex"]))
+    tampered[-1] ^= 1
+    return {
+        "description": "Session crypto (SPEC §8.1). Initiator = connecting side.",
+        "hkdfRfc5869Case1": {"ikmHex": "0b" * 22, "saltHex": "000102030405060708090a0b0c",
+                             "infoHex": "f0f1f2f3f4f5f6f7f8f9", "length": 42, "okmHex": hkdf_rfc5869.hex()},
+        "groupKeyHex": key.hex(), "groupId": GROUP,
+        "discoveryTagHex": tag.hex(), "discoveryTagBase64url": wire.b64url(tag),
+        "otherGroupDiscoveryTagHex": wire.discovery_tag(other_key).hex(),
+        "initiatorSaltHex": salt_i.hex(), "responderSaltHex": salt_r.hex(),
+        "initiatorRecordHex": wire.handshake_record(salt_i, tag).hex(),
+        "responderRecordHex": wire.handshake_record(salt_r, tag).hex(),
+        "sessionKeyHex": k_i.hex(), "initiatorDirection": dir_i, "responderDirection": dir_r,
+        "frames": frames,
+        "tamperedFrameHex": bytes(tampered).hex(),
+    }
+
+
+def invite_cases():
+    key = bytes(range(32))
+    good = wire.invite_url(GROUP, key)
+    urls = [good,
+            good.replace("#k=", "&k="),
+            good[:-1],
+            good.replace(GROUP, "ABCDEF00-0000-4000-8000-000000000001"),
+            "https://example.com/join?g=%s#k=%s" % (GROUP, wire.b64url(key)),
+            good + "=",
+            good.replace("tripsplit://join?g=", "tripsplit://join?x=")]
+    cases = []
+    for u in urls:
+        try:
+            g, k = wire.parse_invite(u)
+            cases.append({"url": u, "valid": True, "groupId": g, "keyHex": k.hex()})
+        except ValueError:
+            cases.append({"url": u, "valid": False})
+    return {"description": "Invite link: tripsplit://join?g=<groupId>#k=<base64url key, no padding> (SPEC §9).",
+            "cases": cases}
+
+
+def received_op_cases():
+    log = Log()
+    create(log)
+    good = log.ops[0]
+    variants = [("ok", good)]
+    bad_hash = dict(good); bad_hash["hash"] = "0" * 64
+    variants.append(("hash", bad_hash))
+    wrong_group = dict(good); wrong_group["group"] = DEV_C; wrong_group["hash"] = ref.op_hash(wrong_group)
+    variants.append(("group", wrong_group))
+    extra = dict(good); extra["x"] = 1
+    variants.append(("shape", extra))
+    other_author = dict(good); other_author["author"] = DEV_B; other_author["hash"] = ref.op_hash(other_author)
+    variants.append(("shape", other_author))
+    future = dict(good); future["v"] = 2; future["type"] = "poll.add"; future["hash"] = ref.op_hash(future)
+    variants.append(("ok", future))
+    out = []
+    for expected, op in variants:
+        assert wire.check_received_op(op, GROUP) == expected, expected
+        out.append({"op": op, "result": expected})
+    return {"description": "Envelope checks on a received op (SPEC §8.3). 'hash' closes the session; "
+                           "'group' and 'shape' drop only the op; unknown v/type is stored and relayed.",
+            "group": GROUP, "cases": out}
+
+
 FILES = {
     "canonical_json.json": canonical_cases,
     "currencies.json": currency_table,
@@ -337,6 +431,9 @@ FILES = {
     "hlc.json": hlc_cases,
     "fold.json": fold_cases,
     "session.json": session_cases,
+    "crypto.json": crypto_cases,
+    "invite.json": invite_cases,
+    "received_op.json": received_op_cases,
 }
 
 

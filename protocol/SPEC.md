@@ -235,7 +235,71 @@ Vectors: `settlement.json`.
 
 Vectors: `session.json`.
 
-## 8. Wire protocol, crypto and transports
+## 8. Wire protocol
 
-Phase 2 and later. The rules are in `docs/PLAN.md` §7–§9 until they move here with their vectors
-(`crypto.json`, a full `session.json`).
+### 8.1 Handshake and crypto
+
+The **initiator** is the side that connects (TCP client, BLE central). The other side is the
+**responder**. One connection syncs one group.
+
+1. Each group has a 32-byte random `groupKey`.
+   `discoveryTag = HMAC-SHA256(key = groupKey, msg = "tripsplit/v1/discover")[0..12]`.
+2. The initiator sends a 31-byte plaintext record: `"TS1" || salt (16 random bytes) || discoveryTag`.
+3. The responder reads it. If it holds no group with that tag, or the magic is wrong, it closes.
+   Else it sends its own record with a new random salt and the **same** tag.
+4. If the two salts are equal, both sides close.
+5. `sessionKey = HKDF-SHA256(ikm = groupKey, salt = lowSalt || highSalt, info = "tripsplit/v1/frame/" || groupId, L = 32)`.
+   `lowSalt` is the salt that is smaller in byte order. HKDF is RFC 5869.
+6. The side that sent `lowSalt` uses direction byte `0x01`; the other side uses `0x02`.
+7. Each side keeps a send counter (u64, starts at 0) and a receive counter for the other direction.
+8. A **frame** is `u32 big-endian length || AES-256-GCM(sessionKey, nonce, plaintext)` (ciphertext followed
+   by the 16-byte tag; no additional data). `nonce = direction || 0x000000 || u64 big-endian counter`.
+   The receiver uses the sender's direction byte and its receive counter.
+9. A receiver closes the connection when `length > 1 MiB` (it checks before it allocates memory) or when
+   a frame does not decrypt.
+
+Vectors: `crypto.json` (HKDF RFC 5869 case 1, tag, records, session key, five frames, one tampered frame).
+
+### 8.2 Messages
+
+Each frame holds one message: canonical JSON with a key `t`.
+
+| `t` | keys |
+|---|---|
+| `hello` | `protocolVersion` (1), `deviceId`, `appVersion`, `groupId`, `vector`, `wallMillis`, `maxChunk` |
+| `ops` | `ops`: 1–64 op envelopes, and the frame plaintext is at most 256 KiB |
+| `done` | `vector` |
+
+A receiver ignores keys it does not know and closes on a message with an unknown `t`.
+
+### 8.3 Session
+
+1. Both sides send `hello` as their first frame. If `groupId` differs from the group of the tag, close.
+   If `wallMillis` is more than 24 h ahead of the local clock, show the clock-skew warning.
+2. Each side sends every op that the peer lacks (§7) in `ops` messages, then sends `done`.
+3. For each received op the receiver checks the envelope (vector `received_op.json`):
+   - the keys are exactly `v, group, author, seq, hlc, type, body, hash`;
+   - `v` is an integer ≥ 1; `author` is an id; `seq` is an integer ≥ 1; `hlc` parses and its device part
+     equals `author`; `type` is a string; `body` is an object; `hash` is 64 lowercase hex;
+   - `group` equals the session group, else drop the op (`group`);
+   - a shape error drops the op (`shape`);
+   - `hash` must equal the computed hash, else **close the session** (`hash`): the peer is broken.
+   Unknown `v` or `type` is `ok`: store and relay it.
+4. Store the accepted ops of one `ops` message in one transaction. An `(author, seq)` that exists with the
+   same hash is skipped. One with a different hash is not stored; record a fork.
+5. Merge each stored op's `hlc` into the local clock (§3).
+6. When a side has sent `done` and received `done`, the session is complete. The initiator closes.
+7. Two sessions for one peer pair and one group: after both `hello`s, the side with the higher `deviceId`
+   closes the newer connection.
+
+## 9. Invite link
+
+`tripsplit://join?g=<groupId>#k=<base64url(groupKey) without padding>`
+
+The parser accepts exactly this form: lowercase id, 43 base64url characters, a key of 32 bytes.
+Anything else is invalid. Vectors: `invite.json`.
+
+## 10. Transports
+
+Wi-Fi LAN (DNS-SD `_tripsplit._tcp`, TCP port 47831 fallback) and BLE (GATT) carry the same byte
+stream: the handshake records, then frames. The transport rules are in `docs/PLAN.md` §9.
