@@ -19,6 +19,8 @@ class RelaySync(
     private val device: Device,
     private val api: RelayApi,
     private val pageLimit: Int = 50,
+    /** The nonce of the next batch. A vector test fixes it. */
+    private val nonce: () -> ByteArray = { ByteArray(RELAY_NONCE_LEN).also { java.security.SecureRandom().nextBytes(it) } },
 ) {
     // One sync for each group at a time. The timer and a save can ask for a sync together.
     private val locks = HashMap<String, Mutex>()
@@ -49,7 +51,7 @@ class RelaySync(
         var pushedBatches = 0
         var state = device.store.relayState(groupId)
         for (batch in splitIntoBatches(device.store.missingFor(groupId, state.vector))) {
-            api.push(mailbox, token, sealBatch(key, mailbox, batch))
+            api.push(mailbox, token, sealBatch(key, mailbox, batch, nonce()))
             state = RelayState(state.cursor, advanceRelayVector(state.vector, batch))
             device.store.saveRelayState(groupId, state)
             pushedOps += batch.size
