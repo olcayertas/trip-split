@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import struct
 import sys
+from pathlib import Path
 
 import tripsplit_ref as ref
 import tripsplit_wire as wire
@@ -524,6 +525,136 @@ def ble_chunk_cases():
             "cases": cases, "errors": out}
 
 
+def relay_cases():
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+    import relay as relay_mod
+
+    key = bytes(range(32))
+    mailbox, token = wire.relay_mailbox_id(key), wire.relay_token(key)
+    batch_key = wire.relay_batch_key(key, GROUP)
+
+    # The three devices of the scenario. A and B hold ops; C is an empty newcomer.
+    log = Log()
+    create(log)
+    add_member(log, DEV_A, 1, M_AYSE, "Ayşe")
+    expense(log, DEV_A, 2, E1, "Bread", M_AYSE, money(300, "EUR", "1", equal(M_ALI, M_AYSE)))
+    log.op(DEV_B, 3, "member.add", {"memberId": M_CAN, "name": "Can"})
+    expense(log, DEV_B, 4, E2, "Water", M_CAN, money(200, "EUR", "1", equal(M_ALI, M_CAN)))
+    ops = log.ops
+    a_ops = [o for o in ops if o["author"] == DEV_A]
+    b_ops = [o for o in ops if o["author"] == DEV_B] + [o for o in a_ops if o["seq"] <= 2]
+
+    def nonce(k):  # the k-th POST of the scenario uses this nonce (1-based)
+        return bytes(8) + struct.pack(">I", k)
+
+    blob_ops = [a_ops, [o for o in ops if o["author"] == DEV_B]]
+    blobs = [{"nonceHex": nonce(i + 1).hex(), "opRefs": [wire_ref(o) for o in b],
+              "plaintext": ref.canonical({"ops": b}),
+              "blobHex": wire.seal_batch(batch_key, mailbox, b, nonce(i + 1)).hex()}
+             for i, b in enumerate(blob_ops)]
+    good = bytes.fromhex(blobs[0]["blobHex"])
+    tampered = bytearray(good); tampered[20] ^= 0x01
+    other_mailbox = "0" * 32
+    wrong_aad = wire.seal_batch(batch_key, other_mailbox, a_ops, nonce(1))
+    for blob, label in ((good, "good"), (bytes(tampered), "tampered"), (wrong_aad, "wrongAad")):
+        assert (wire.open_batch(batch_key, mailbox, blob) is not None) == (label == "good"), label
+
+    core = relay_mod.RelayCore()
+    posts = [0]
+    current: list = []  # the requests of the step that runs now
+
+    def transport(method, path, body):
+        status, payload = core.handle(method, path, "Bearer " + token, body)
+        entry = {"method": method, "path": path, "status": status}
+        if method == "POST":
+            entry["bodyHex"] = body.hex()
+        entry["response"] = payload
+        current.append(entry)
+        return status, payload
+
+    def next_nonce():
+        posts[0] += 1
+        return nonce(posts[0])
+
+    clients, steps = {}, []
+    plan = [("A", a_ops, 50), ("B", b_ops, 50), ("C", [], 1), ("A", None, 50)]
+    for name, held, page_limit in plan:
+        if held is not None:
+            store = {(o["author"], o["seq"]): o for o in held}
+            clients[name] = wire.RelayClient(GROUP, key, store, transport, next_nonce, page_limit)
+        client = clients[name]
+        before = len(client.ops)
+        current.clear()
+        stored, sent = client.sync()
+        steps.append({"device": name, "pageLimit": page_limit, "heldBefore": before,
+                      "requests": list(current), "stored": stored, "sent": sent,
+                      "relayCursor": client.cursor, "relayVector": client.vector, "heldAfter": len(client.ops)})
+    final = [clients[n].ops for n in ("A", "B", "C")]
+    folds = [ref.canonical(ref.fold(GROUP, list(st.values()))) for st in final]
+    assert len(set(folds)) == 1 and all(len(st) == len(ops) for st in final)
+    expected = ref.fold(GROUP, ops)
+    return {
+        "description": "Internet relay (SPEC §10.4). Values derive from groupKey. A blob is nonce(12) || "
+                       "AES-256-GCM(batchKey, nonce, canonical {ops}, aad = mailboxId ASCII). tokenHashHex = "
+                       "SHA-256 of the 64 ASCII characters of the token. 'scenario' runs device A, B, C, A "
+                       "against an empty relay, one sync (pull, then push) each; the k-th POST of the whole "
+                       "scenario uses nonce k (12 bytes: 8 zero bytes, then k as u32 big-endian). 'requests' "
+                       "lists what the client must send, in order, with the relay answers. 'http' lists "
+                       "single-request checks against a fresh relay.",
+        "group": GROUP, "groupKeyHex": key.hex(), "mailboxId": mailbox, "token": token,
+        "tokenHashHex": wire.relay_token_hash(token), "batchKeyHex": batch_key.hex(),
+        "blobs": blobs,
+        "tamperedBlobHex": bytes(tampered).hex(), "wrongAadBlobHex": wrong_aad.hex(), "wrongAadMailboxId": other_mailbox,
+        "ops": ops,
+        "scenario": {"authorization": "Bearer " + token,
+                     "initialHeld": {"A": [wire_ref(o) for o in a_ops], "B": [wire_ref(o) for o in b_ops], "C": []},
+                     "steps": steps,
+                     "relayBlobCount": len(core.boxes[mailbox].blobs),
+                     "endOpRefs": sorted(wire_ref(o) for o in ops), "endFoldBalances": expected["balances"]},
+        "http": relay_http_cases(relay_mod, mailbox, token),
+    }
+
+
+def wire_ref(op):
+    return "%s:%d" % (op["author"], op["seq"])
+
+
+def relay_http_cases(relay_mod, mailbox, token):
+    other = "f" * 64
+    big = relay_mod.MAX_BLOB
+    cases = []
+
+    def case(name, steps):
+        core = relay_mod.RelayCore()
+        out = []
+        for st in steps:
+            auth = {"good": "Bearer " + token, "other": "Bearer " + other, "none": None}[st.get("auth", "good")]
+            body = b"\x01" * st["bodyBytes"] if "bodyBytes" in st else None
+            status, payload = core.handle(st["method"], st["path"], auth, body)
+            entry = {k: st[k] for k in ("method", "path") if k in st}
+            entry["auth"] = st.get("auth", "good")
+            if "bodyBytes" in st:
+                entry["bodyBytes"] = st["bodyBytes"]
+            entry["status"], entry["response"] = status, payload
+            out.append(entry)
+        cases.append({"name": name, "steps": out})
+
+    base = "/v1/m/%s/batches" % mailbox
+    post = lambda **kw: dict(method="POST", path=base, **kw)
+    get = lambda q="", **kw: dict(method="GET", path=base + q, **kw)
+    case("unknownMailboxGetIsEmpty", [get(), get("?after=5&limit=10", auth="other")])
+    case("firstPostCreatesMailboxAndCursorsStartAtOne", [post(bodyBytes=40), post(bodyBytes=41), get()])
+    case("otherTokenGets403", [post(bodyBytes=40), post(bodyBytes=40, auth="other"), get(auth="other"),
+                               post(bodyBytes=40, auth="none"), get(auth="none")])
+    case("firstTokenOwnsTheMailbox", [post(bodyBytes=40, auth="other"), post(bodyBytes=40), get(auth="other")])
+    case("badMailboxId", [dict(method="GET", path="/v1/m/XYZ/batches"), dict(method="POST", path="/v1/m/%s/batches" % ("A" * 32), bodyBytes=40)])
+    case("badQuery", [get("?after=-1"), get("?after=x"), get("?limit=0"), get("?limit=101"), get("?limit=1.5"), get("?limit=")])
+    case("paging", [post(bodyBytes=30), post(bodyBytes=31), post(bodyBytes=32), get("?limit=2"), get("?after=2&limit=2"),
+                    get("?after=3"), get("?after=99")])
+    case("bodyLimits", [post(bodyBytes=big), post(bodyBytes=big + 1), post(bodyBytes=0), get()])
+    return cases
+
+
 FILES = {
     "canonical_json.json": canonical_cases,
     "currencies.json": currency_table,
@@ -537,6 +668,7 @@ FILES = {
     "invite.json": invite_cases,
     "received_op.json": received_op_cases,
     "ble_chunk.json": ble_chunk_cases,
+    "relay.json": relay_cases,
 }
 
 

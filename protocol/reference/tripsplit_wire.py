@@ -234,3 +234,154 @@ def info_value(device_id: str, max_chunk: int, roles: list[str], tags: list[byte
     """The `info` characteristic value (SPEC §10.2.2)."""
     return ref.canonical_bytes({"deviceId": device_id, "maxChunk": max_chunk, "protocolVersion": PROTOCOL_VERSION,
                                 "roles": sorted(roles), "tags": [t.hex() for t in tags[:8]]})
+
+
+# --- Internet relay (SPEC §10.4) ---------------------------------------------------------------
+
+RELAY_MAX_BLOB = 320 * 1024
+RELAY_MAX_BATCH_OPS = 64
+RELAY_MAX_BATCH_PLAINTEXT = 256 * 1024
+RELAY_DEFAULT_LIMIT = 50
+
+
+def relay_mailbox_id(group_key: bytes) -> str:
+    return hmac.new(group_key, b"tripsplit/v1/relay/mailbox", hashlib.sha256).digest()[:16].hex()
+
+
+def relay_token(group_key: bytes) -> str:
+    return hmac.new(group_key, b"tripsplit/v1/relay/token", hashlib.sha256).hexdigest()
+
+
+def relay_token_hash(token: str) -> str:
+    """What the relay stores: SHA-256 of the 64 ASCII characters of the token, in hex."""
+    return hashlib.sha256(token.encode("ascii")).hexdigest()
+
+
+def relay_batch_key(group_key: bytes, group_id: str) -> bytes:
+    return hkdf_sha256(group_key, b"", b"tripsplit/v1/relay/batch/" + group_id.encode())
+
+
+def seal_batch(batch_key: bytes, mailbox_id: str, ops: list, nonce: bytes | None = None) -> bytes:
+    """blob = nonce(12) || AES-256-GCM(batchKey, nonce, canonical {"ops":[...]}, aad = mailboxId)."""
+    import os
+    nonce = os.urandom(12) if nonce is None else nonce
+    assert len(nonce) == 12 and 1 <= len(ops) <= RELAY_MAX_BATCH_OPS
+    plain = ref.canonical_bytes({"ops": ops})
+    assert len(plain) <= RELAY_MAX_BATCH_PLAINTEXT
+    return nonce + AESGCM(batch_key).encrypt(nonce, plain, mailbox_id.encode("ascii"))
+
+
+def open_batch(batch_key: bytes, mailbox_id: str, blob: bytes):
+    """Returns the list of ops, or None when the blob must be skipped (SPEC §10.4.2)."""
+    if len(blob) < 12 + 16:
+        return None
+    try:
+        plain = AESGCM(batch_key).decrypt(blob[:12], blob[12:], mailbox_id.encode("ascii"))
+        data = __import__("json").loads(plain)
+    except Exception:
+        return None
+    if not isinstance(data, dict) or not isinstance(data.get("ops"), list):
+        return None
+    return data["ops"]
+
+
+class RelayClient:
+    """Pull-then-push relay sync of one group (SPEC §10.4.4).
+
+    `ops` is the device's store: a dict {(author, seq): op}. `transport(method, path, body)` returns
+    (status, parsed JSON or None); `path` includes the query. `nonce_fn()` gives 12 bytes per push.
+    """
+
+    def __init__(self, group_id, group_key, ops, transport, nonce_fn=None, page_limit=RELAY_DEFAULT_LIMIT):
+        self.group_id, self.ops, self.transport = group_id, ops, transport
+        self.mailbox = relay_mailbox_id(group_key)
+        self.token = relay_token(group_key)
+        self.batch_key = relay_batch_key(group_key, group_id)
+        self.nonce_fn = nonce_fn
+        self.page_limit = page_limit
+        self.cursor = 0
+        self.on_relay: set[tuple[str, int]] = set()  # (author, seq) the relay is known to hold
+
+    @property
+    def vector(self) -> dict[str, int]:
+        seqs: dict[str, set[int]] = {}
+        for author, seq in self.on_relay:
+            seqs.setdefault(author, set()).add(seq)
+        out = {}
+        for author, s in sorted(seqs.items()):
+            n = 0
+            while n + 1 in s:
+                n += 1
+            if n:
+                out[author] = n
+        return out
+
+    def pull(self) -> int:
+        """Reads every page after the cursor. Returns the number of new ops stored."""
+        stored = 0
+        while True:
+            status, body = self.transport(
+                "GET", "/v1/m/%s/batches?after=%d&limit=%d" % (self.mailbox, self.cursor, self.page_limit), None)
+            if status != 200:
+                raise RelayError(status)
+            for item in body["batches"]:
+                stored += self._apply(b64url_decode(item["blob"]))
+                self.cursor = item["cursor"]
+            if not body["more"]:
+                return stored
+
+    def _apply(self, blob: bytes) -> int:
+        ops = open_batch(self.batch_key, self.mailbox, blob)
+        if ops is None:
+            return 0
+        verdicts = [check_received_op(op, self.group_id) for op in ops]
+        if "hash" in verdicts:  # a hash error skips the whole batch
+            return 0
+        n = 0
+        for op, verdict in zip(ops, verdicts):
+            if verdict != "ok":
+                continue
+            key = (op["author"], op["seq"])
+            self.on_relay.add(key)
+            if key not in self.ops:
+                self.ops[key] = op
+                n += 1
+        return n
+
+    def push(self) -> int:
+        """Sends every op the relay lacks, in batches. Returns the number of ops sent."""
+        vec = self.vector
+        todo = [o for o in self.ops.values() if o["seq"] > vec.get(o["author"], 0)]
+        todo.sort(key=lambda o: (o["author"].encode(), o["seq"]))
+        sent, batch, size = 0, [], 0
+
+        def flush():
+            nonlocal sent, batch, size
+            if not batch:
+                return
+            blob = seal_batch(self.batch_key, self.mailbox, batch, self.nonce_fn() if self.nonce_fn else None)
+            status, _ = self.transport("POST", "/v1/m/%s/batches" % self.mailbox, blob)
+            if status != 201:
+                raise RelayError(status)
+            self.on_relay.update((o["author"], o["seq"]) for o in batch)
+            sent += len(batch)
+            batch, size = [], 0
+
+        for op in todo:
+            n = len(ref.canonical_bytes(op)) + 1
+            if batch and (len(batch) >= RELAY_MAX_BATCH_OPS or size + n > RELAY_MAX_BATCH_PLAINTEXT - 16):
+                flush()
+            batch.append(op)
+            size += n
+        flush()
+        return sent
+
+    def sync(self) -> tuple[int, int]:
+        """Pull, then push. Returns (ops stored, ops sent)."""
+        return self.pull(), self.push()
+
+
+class RelayError(Exception):
+    def __init__(self, status: int):
+        super().__init__("relay answered %d" % status)
+        self.status = status
