@@ -36,6 +36,7 @@ public enum SessionError: Error, Equatable {
     case frameTooLarge
     case decryptFailed
     case linkClosed
+    case timeout
     case duplicateSession
     case transport(String)
 }
@@ -92,13 +93,15 @@ public struct SessionOptions: Sendable {
     public var onEvent: @Sendable (SessionEvent) -> Void
     /// How long a responder waits for the initiator to close after the session is complete.
     public var closeGraceSeconds: Double
+    public var timeouts: SessionTimeouts
 
-    public init(deviceId: String, appVersion: String = "1.0.0", maxChunk: Int64 = 182,
+    public init(deviceId: String, appVersion: String = "1.0.0", maxChunk: Int64 = 0,
                 now: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
                 makeSalt: @escaping @Sendable () -> [UInt8] = { (0..<SyncCrypto.saltLength).map { _ in UInt8.random(in: 0...255) } },
                 admission: (any SessionAdmission)? = nil,
                 onEvent: @escaping @Sendable (SessionEvent) -> Void = { _ in },
-                closeGraceSeconds: Double = 3) {
+                closeGraceSeconds: Double = 5,
+                timeouts: SessionTimeouts = .lan) {
         self.deviceId = deviceId
         self.appVersion = appVersion
         self.maxChunk = maxChunk
@@ -107,6 +110,7 @@ public struct SessionOptions: Sendable {
         self.admission = admission
         self.onEvent = onEvent
         self.closeGraceSeconds = closeGraceSeconds
+        self.timeouts = timeouts
     }
 }
 
@@ -118,6 +122,42 @@ final class ByteSource: @unchecked Sendable {
     init(_ stream: AsyncThrowingStream<[UInt8], Error>) { iterator = stream.makeAsyncIterator() }
 
     func next() async throws -> [UInt8]? { try await iterator.next() }
+
+    /// Like `next()`, but throws `SessionError.timeout` when nothing arrives in time. After a timeout the
+    /// source must not be used again: the session closes.
+    func next(timeout: TimeInterval) async throws -> [UInt8]? {
+        try await withThrowingTaskGroup(of: [UInt8]?.self) { group in
+            group.addTask { try await self.next() }
+            group.addTask {
+                try await Task.sleep(for: .seconds(max(0.001, timeout)))
+                throw SessionError.timeout
+            }
+            defer { group.cancelAll() }
+            return try await group.next() ?? nil
+        }
+    }
+}
+
+/// Time limits of SPEC §10.1.4 (LAN) and §10.2.7 (BLE), in seconds.
+public struct SessionTimeouts: Sendable {
+    /// The record of the peer, after we wrote ours (responder: after the connection opened).
+    public var record: TimeInterval
+    /// The hello of the peer, after both records.
+    public var hello: TimeInterval
+    /// No byte received while the session is open.
+    public var idle: TimeInterval
+    /// The whole session.
+    public var session: TimeInterval
+
+    public init(record: TimeInterval, hello: TimeInterval, idle: TimeInterval, session: TimeInterval) {
+        self.record = record
+        self.hello = hello
+        self.idle = idle
+        self.session = session
+    }
+
+    public static let lan = SessionTimeouts(record: 5, hello: 10, idle: 30, session: 600)
+    public static let ble = SessionTimeouts(record: 10, hello: 15, idle: 30, session: 600)
 }
 
 public actor SyncSession {
@@ -136,6 +176,8 @@ public actor SyncSession {
     private var result: SessionResult?
     private var senderError: SessionError?
     private var admitted: String?
+    private var phaseTimeout: TimeInterval = 0
+    private var deadline = Date.distantFuture
 
     /// An initiator passes the one group it wants to sync. A responder passes every group it holds.
     public init(role: Role, link: any Link, groups: [SyncGroup], options: SessionOptions) {
@@ -177,7 +219,9 @@ public actor SyncSession {
     // MARK: Handshake
 
     private func fill() async throws {
-        guard let chunk = try await source.next() else { throw SessionError.linkClosed }
+        let remaining = deadline.timeIntervalSinceNow
+        guard remaining > 0 else { throw SessionError.timeout }
+        guard let chunk = try await source.next(timeout: min(phaseTimeout, remaining)) else { throw SessionError.linkClosed }
         buffer.append(chunk)
     }
 
@@ -190,6 +234,8 @@ public actor SyncSession {
     }
 
     private func handshake() async throws {
+        deadline = Date().addingTimeInterval(options.timeouts.session)
+        phaseTimeout = options.timeouts.record
         let ownSalt = options.makeSalt()
         let peerSalt: [UInt8]
         switch role {
@@ -246,6 +292,7 @@ public actor SyncSession {
         try await handshake()
         guard let g = group else { throw SessionError.unknownGroup }
 
+        phaseTimeout = options.timeouts.hello
         let hello = Hello(deviceId: options.deviceId, appVersion: options.appVersion, groupId: g.groupId,
                           vector: try await g.store.versionVector(), wallMillis: options.now(),
                           maxChunk: options.maxChunk)
@@ -253,6 +300,7 @@ public actor SyncSession {
         guard case let .hello(peer) = try await readMessage() else {
             throw SessionError.protocolViolation("first frame is not hello")
         }
+        phaseTimeout = options.timeouts.idle
         guard peer.groupId == g.groupId else { throw SessionError.groupMismatch }
         guard min(peer.protocolVersion, hello.protocolVersion) == 1 else { throw SessionError.unsupportedVersion }
 

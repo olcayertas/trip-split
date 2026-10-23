@@ -27,6 +27,12 @@
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_tripsplit._tcp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>TripSplit finds the other phones of your group on the same Wi-Fi network and syncs the group with them.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

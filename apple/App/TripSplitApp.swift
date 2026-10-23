@@ -1,5 +1,6 @@
 import SwiftUI
 import TripSplitCore
+import TripSplitNet
 import TripSplitStore
 
 @main
@@ -22,6 +23,7 @@ struct TripSplitApp: App {
 final class AppModel {
     private(set) var repository: GroupRepository?
     private(set) var failure: String?
+    private(set) var coordinator: SyncCoordinator?
 
     init() {
         let args = ProcessInfo.processInfo.arguments
@@ -43,9 +45,23 @@ final class AppModel {
             let repo = GroupRepository(database: database, identity: identity)
             repo.start()
             repository = repo
+            coordinator = SyncCoordinator(repository: repo, transports: [LANTransport()])
+            #if DEBUG
+            if args.contains("-seed-demo") || args.contains("-demo-fixed") {
+                let fixed = args.contains("-demo-fixed")
+                Task { await DemoData.seed(repo, fixed: fixed) }
+            }
+            if args.contains("-auto-sync"), let coordinator {
+                Task {
+                    try? await Task.sleep(for: .seconds(2))
+                    await coordinator.start()
+                }
+            }
+            #else
             if args.contains("-seed-demo") {
                 Task { await DemoData.seed(repo) }
             }
+            #endif
         } catch {
             failure = String(describing: error)
         }

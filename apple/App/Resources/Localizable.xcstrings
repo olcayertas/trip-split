@@ -211,6 +211,16 @@
         }
       }
     },
+    "A phone in this group has a wrong clock.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu gruptaki bir telefonun saati yanlış."
+          }
+        }
+      }
+    },
     "Activities": {
       "localizations": {
         "tr": {
@@ -297,6 +307,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bakiyeler"
+          }
+        }
+      }
+    },
+    "Bluetooth": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bluetooth"
           }
         }
       }
@@ -481,6 +501,16 @@
         }
       }
     },
+    "Failed %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başarısız %@"
+          }
+        }
+      }
+    },
     "Food": {
       "localizations": {
         "tr": {
@@ -601,6 +631,16 @@
         }
       }
     },
+    "Last sync": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son eşitleme"
+          }
+        }
+      }
+    },
     "Left the group": {
       "localizations": {
         "tr": {
@@ -617,6 +657,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Konaklama"
+          }
+        }
+      }
+    },
+    "Looking for phones of this group…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu grubun telefonları aranıyor…"
           }
         }
       }
@@ -661,6 +711,16 @@
         }
       }
     },
+    "Network problem. Check that TripSplit may use the local network in Settings.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ağ sorunu. Ayarlar'da TripSplit'in yerel ağı kullanmasına izin verildiğini kontrol edin."
+          }
+        }
+      }
+    },
     "No expenses yet": {
       "localizations": {
         "tr": {
@@ -681,12 +741,32 @@
         }
       }
     },
+    "No phone found yet.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz telefon bulunamadı."
+          }
+        }
+      }
+    },
     "No phone yet": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Henüz telefonu yok"
+          }
+        }
+      }
+    },
+    "Not looking for phones": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefon aranmıyor"
           }
         }
       }
@@ -757,6 +837,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Grubun davet bağlantısını yapıştırın."
+          }
+        }
+      }
+    },
+    "Phone %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefon %@"
+          }
+        }
+      }
+    },
+    "Phones": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefonlar"
           }
         }
       }
@@ -941,6 +1041,36 @@
         }
       }
     },
+    "Sync works while this screen is open on both phones. Phones must be on the same Wi-Fi network or hotspot. Some hotel networks block this. Then use a phone hotspot.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşitleme bu ekran iki telefonda da açıkken çalışır. Telefonlar aynı Wi-Fi ağında veya hotspot'ta olmalı. Bazı otel ağları buna izin vermez. Bu durumda telefon hotspot'u kullanın."
+          }
+        }
+      }
+    },
+    "Synced %@: %lld received, %lld sent": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşitlendi %1$@: %2$lld alındı, %3$lld gönderildi"
+          }
+        }
+      }
+    },
+    "Syncing: %lld received, %lld sent": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşitleniyor: %lld alındı, %lld gönderildi"
+          }
+        }
+      }
+    },
     "The date is not valid.": {
       "localizations": {
         "tr": {
@@ -1061,6 +1191,16 @@
         }
       }
     },
+    "Waiting": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bekliyor"
+          }
+        }
+      }
+    },
     "Waiting for the first sync": {
       "localizations": {
         "tr": {
@@ -1087,6 +1227,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "TripSplit'e hoş geldiniz"
+          }
+        }
+      }
+    },
+    "Wi-Fi": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wi-Fi"
           }
         }
       }

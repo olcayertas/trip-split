@@ -5,10 +5,24 @@ import TripSplitStore
 /// Sample group for screenshots (`-seed-demo`). Not used in normal runs.
 @MainActor
 enum DemoData {
-    static func seed(_ repo: GroupRepository) async {
+    /// A fixed invite for the live LAN test between a simulator and a second process (`-demo-fixed`).
+    static let fixedInvite = Invite(groupId: "00000000-0000-4000-8000-0000000000aa", groupKey: (0..<32).map { UInt8($0) })
+
+    static func seed(_ repo: GroupRepository, fixed: Bool = false) async {
         guard repo.groups.isEmpty else { return }
         try? repo.setDisplayName("Ali")
-        guard let id = try? await repo.createGroup(name: "Kapadokya 2026", baseCurrency: "EUR", creatorName: "Ali") else { return }
+        let id: String
+        if fixed {
+            try? await repo.join(fixedInvite)
+            id = fixedInvite.groupId
+            _ = try? await repo.append(groupId: id, type: "group.create", body: .object([
+                "name": .string("Kapadokya 2026"), "baseCurrency": .string("EUR"),
+                "creatorMemberId": .string(UUID().uuidString.lowercased()), "creatorName": .string("Ali"),
+            ]))
+        } else {
+            guard let created = try? await repo.createGroup(name: "Kapadokya 2026", baseCurrency: "EUR", creatorName: "Ali") else { return }
+            id = created
+        }
         let ali = repo.state(of: id).members[0].id
         var ids: [String] = [ali]
         for name in ["Ayşe", "Mehmet", "Zeynep"] {
