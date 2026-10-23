@@ -20,6 +20,8 @@ public final class GroupRepository {
     @ObservationIgnored public let database: AppDatabase
     @ObservationIgnored private let now: @Sendable () -> Int64
     @ObservationIgnored private var observation: Task<Void, Never>?
+    /// Called on the main actor after this device writes an op. The relay sync uses it (SPEC §10.4.4).
+    @ObservationIgnored public var onLocalWrite: (@MainActor (String) -> Void)?
 
     public init(database: AppDatabase, identity: DeviceIdentity,
                 now: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }) {
@@ -140,6 +142,17 @@ public final class GroupRepository {
         }
     }
 
+    /// Every group of this device with its key and its relay-aware store.
+    public func relayTargets() async throws -> [RelayTarget] {
+        let pool = database.pool
+        return try await pool.read { db in
+            try Row.fetchAll(db, sql: "SELECT group_id, group_key FROM groups ORDER BY created_at, group_id").map { row in
+                let id: String = row["group_id"]
+                return RelayTarget(groupId: id, groupKey: [UInt8](row["group_key"] as Data), store: GRDBOpStore(pool: pool, groupId: id))
+            }
+        }
+    }
+
     /// The change log of a group, newest first.
     public func history(of groupId: String) async throws -> [HistoryEntry] {
         let ops: [JSONValue] = try await database.pool.read { db in
@@ -175,6 +188,13 @@ public final class GroupRepository {
             return op
         }
         await refreshAll()
+        onLocalWrite?(groupId)
         return op
     }
+}
+
+public struct RelayTarget: Sendable {
+    public let groupId: String
+    public let groupKey: [UInt8]
+    public let store: GRDBOpStore
 }
