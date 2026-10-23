@@ -557,6 +557,8 @@ devices can catch; the owner must provide at least one real iPhone and one real 
 - Snapshot + log compaction for very long groups.
 - CSV / PDF export of the final settlement.
 - Exchange rates fetched when online.
+- Rotating discovery tags (for example an HMAC over a day epoch; accept the previous, current and next
+  epoch). v1 uses one static tag for each group (SPEC §10.3).
 - Apple Multipeer Connectivity for iPhone↔iPhone speed (it does not talk to Android, so it is an extra
   transport, not a replacement).
 
