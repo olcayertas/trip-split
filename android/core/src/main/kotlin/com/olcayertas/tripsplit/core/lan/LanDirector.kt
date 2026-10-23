@@ -24,6 +24,8 @@ interface PeerDiscovery {
     fun stop()
 }
 
+enum class Transport { WIFI, BLUETOOTH }
+
 data class PeerStatus(
     val deviceId: String,
     val host: String,
@@ -32,6 +34,7 @@ data class PeerStatus(
     val syncing: Boolean,
     val lastOutcome: SessionOutcome?,
     val lastSyncAt: Long?,
+    val transport: Transport = Transport.WIFI,
 )
 
 data class NearbyState(

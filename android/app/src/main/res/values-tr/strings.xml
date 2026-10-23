@@ -124,4 +124,11 @@
     <string name="nearby_waiting">Bulundu. Eşitleme bekleniyor.</string>
     <string name="nearby_result_ok">Gönderilen %1$d, alınan %2$d</string>
     <string name="nearby_result_failed">Durdu: %1$s</string>
+    <string name="nearby_transport_bluetooth">Bluetooth</string>
+    <string name="ble_need_permission">Wi-Fi olmadan telefon bulmak için Bluetooth iznini ver.</string>
+    <string name="ble_allow">Bluetooth iznini ver</string>
+    <string name="ble_off">Bluetooth kapalı. Wi-Fi olmadan eşitlemek için aç.</string>
+    <string name="ble_location_off">Android 11 ve eski sürümler Bluetooth taraması için konum anahtarının açık olmasını ister. TripSplit konumunu okumaz.</string>
+    <string name="ble_unsupported">Bu telefonda Bluetooth Low Energy yok.</string>
+    <string name="ble_try_again">Yeniden kontrol et</string>
 </resources>

@@ -124,4 +124,11 @@
     <string name="nearby_waiting">Found. Waiting to sync.</string>
     <string name="nearby_result_ok">Sent %1$d, received %2$d</string>
     <string name="nearby_result_failed">Stopped: %1$s</string>
+    <string name="nearby_transport_bluetooth">Bluetooth</string>
+    <string name="ble_need_permission">Allow Bluetooth to find phones without Wi-Fi.</string>
+    <string name="ble_allow">Allow Bluetooth</string>
+    <string name="ble_off">Bluetooth is off. Switch it on to sync without Wi-Fi.</string>
+    <string name="ble_location_off">Android 11 and older need the location switch on for a Bluetooth scan. TripSplit does not read your location.</string>
+    <string name="ble_unsupported">This phone has no Bluetooth Low Energy.</string>
+    <string name="ble_try_again">Check again</string>
 </resources>

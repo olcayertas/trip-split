@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,6 +38,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.olcayertas.tripsplit.R
 import com.olcayertas.tripsplit.core.lan.PeerStatus
+import com.olcayertas.tripsplit.core.lan.Transport
+import com.olcayertas.tripsplit.net.BlePermissions
+import com.olcayertas.tripsplit.net.BleStatus
 import com.olcayertas.tripsplit.core.lan.SessionOutcome
 import com.olcayertas.tripsplit.net.NearbyController
 import java.text.DateFormat
@@ -88,6 +92,7 @@ fun NearbyScreen(controller: NearbyController, onBack: () -> Unit) {
                     }
                 }
             }
+            item { BleCard(controller) }
             if (state.clockSkew) {
                 item {
                     Text(stringResource(R.string.nearby_clock_skew), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
@@ -107,7 +112,10 @@ fun NearbyScreen(controller: NearbyController, onBack: () -> Unit) {
 private fun PeerRow(p: PeerStatus) {
     val df = DateFormat.getTimeInstance(DateFormat.SHORT)
     ListItem(
-        leadingContent = { Icon(Icons.Filled.Wifi, stringResource(R.string.nearby_transport_wifi)) },
+        leadingContent = {
+            if (p.transport == Transport.WIFI) Icon(Icons.Filled.Wifi, stringResource(R.string.nearby_transport_wifi))
+            else Icon(Icons.Filled.Bluetooth, stringResource(R.string.nearby_transport_bluetooth))
+        },
         headlineContent = { Text("TripSplit-" + p.deviceId.take(8)) },
         supportingContent = {
             val text = when {
@@ -123,4 +131,30 @@ private fun PeerRow(p: PeerStatus) {
         },
         trailingContent = { if (p.syncing) CircularProgressIndicator(Modifier.padding(4.dp), strokeWidth = 2.dp) },
     )
+}
+
+/** Tells the user what Bluetooth needs: the permissions, the adapter, and on Android 11 and older the location switch. */
+@Composable
+private fun BleCard(controller: NearbyController) {
+    val status by controller.bleStatus.collectAsState()
+    if (status == BleStatus.READY) return
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(),
+    ) { controller.restart() }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val text = when (status) {
+                BleStatus.NO_PERMISSION -> R.string.ble_need_permission
+                BleStatus.BLUETOOTH_OFF -> R.string.ble_off
+                BleStatus.LOCATION_OFF -> R.string.ble_location_off
+                else -> R.string.ble_unsupported
+            }
+            Text(stringResource(text), style = MaterialTheme.typography.bodyMedium)
+            if (status == BleStatus.NO_PERMISSION) {
+                androidx.compose.material3.Button({ launcher.launch(BlePermissions.required()) }) { Text(stringResource(R.string.ble_allow)) }
+            } else if (status != BleStatus.UNSUPPORTED) {
+                androidx.compose.material3.OutlinedButton({ controller.restart() }) { Text(stringResource(R.string.ble_try_again)) }
+            }
+        }
+    }
 }
