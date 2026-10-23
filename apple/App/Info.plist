@@ -27,6 +27,8 @@
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>TripSplit uses Bluetooth to find the other phones of your group and sync the group with them when no Wi-Fi network is shared.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_tripsplit._tcp</string>
