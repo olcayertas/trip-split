@@ -27,7 +27,7 @@ class FakeMarker(var present: Boolean = false) : InstallMarker {
 }
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = android.app.Application::class)
 class PersistenceTest {
     private lateinit var context: Context
     private lateinit var db: TripSplitDatabase
@@ -130,5 +130,48 @@ class PersistenceTest {
         assertEquals("Trip", repo.foldNow(g.groupId).group?.name)
         repo.append(g.groupId, "group.rename", buildJsonObject { put("name", "Renamed") })
         assertEquals("Renamed", repo.foldNow(g.groupId).group?.name)
+    }
+
+    @Test
+    fun addMemberWithEarlierExpensesEditsEqualAndWeightsOnly() = runBlocking {
+        val id = IdentityManager(db, FakeMarker(), ::nextId).ensure()
+        val repo = TripRepository(db, device(id.deviceId))
+        val g = repo.createGroup("Trip", "EUR", "Ali")
+        val ali = g.creatorMemberId
+        fun add(split: kotlinx.serialization.json.JsonObject) = runBlocking {
+            val e = nextId()
+            repo.append(
+                g.groupId, "expense.add",
+                com.olcayertas.tripsplit.core.OpBodies.expenseAdd(
+                    e, "x", "2026-10-23", "food", ali,
+                    com.olcayertas.tripsplit.core.OpBodies.money(1000, "EUR", "1", split),
+                ),
+            )
+            e
+        }
+        val equal = add(com.olcayertas.tripsplit.core.OpBodies.equalSplit(listOf(ali)))
+        val weights = add(com.olcayertas.tripsplit.core.OpBodies.weightsSplit(mapOf(ali to 2L)))
+        val exact = add(com.olcayertas.tripsplit.core.OpBodies.exactSplit(mapOf(ali to 1000L)))
+
+        val fromNow = repo.addMember(g.groupId, "Ayşe", includeEarlier = false)
+        assertTrue(fromNow.untouchedExpenses.isEmpty())
+        assertEquals(setOf(ali), splitMembers(repo.foldNow(g.groupId), equal))
+
+        val withEarlier = repo.addMember(g.groupId, "Can", includeEarlier = true)
+        assertEquals(listOf(exact), withEarlier.untouchedExpenses)
+        val state = repo.foldNow(g.groupId)
+        assertEquals(setOf(ali, withEarlier.memberId), splitMembers(state, equal))
+        assertEquals(setOf(ali, withEarlier.memberId), splitMembers(state, weights))
+        assertEquals(setOf(ali), splitMembers(state, exact))
+    }
+
+    private fun splitMembers(state: com.olcayertas.tripsplit.core.FoldState, expenseId: String): Set<String> {
+        val split = state.expenses.first { it.id == expenseId }.money.getValue("split") as kotlinx.serialization.json.JsonObject
+        val mode = (split.getValue("mode") as kotlinx.serialization.json.JsonPrimitive).content
+        return when (mode) {
+            "equal" -> (split.getValue("members") as kotlinx.serialization.json.JsonArray).map { (it as kotlinx.serialization.json.JsonPrimitive).content }.toSet()
+            "weights" -> (split.getValue("weights") as kotlinx.serialization.json.JsonObject).keys
+            else -> (split.getValue("shares") as kotlinx.serialization.json.JsonObject).keys
+        }
     }
 }
