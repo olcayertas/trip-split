@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+# Xcode / SwiftPM
+apple/*.xcodeproj/
+apple/build/
+.build/
+.swiftpm/
+DerivedData/
+xcuserdata/
+*.ipa
+*.dSYM.zip
+# Fastlane and App Store Connect secrets
+apple/fastlane/.env*
+!apple/fastlane/.env.example
+apple/fastlane/report.xml
+apple/fastlane/README.md
+*.p8
+# Android / Gradle
+.gradle/
+android/**/build/
+android/local.properties
+android/keystore.properties
+*.jks
+*.keystore
+.idea/
+*.iml
+dist/
+# Ruby
+apple/vendor/bundle/
