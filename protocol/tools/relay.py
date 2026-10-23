@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import hmac
 import json
+import os
 import re
 import sys
 import threading
@@ -37,8 +38,9 @@ TOKEN_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 class Mailbox:
-    def __init__(self, token_hash: str, now: float):
+    def __init__(self, token_hash: str, now: float, epoch: str):
         self.token_hash = token_hash
+        self.epoch = epoch  # SPEC §10.4.3: new for each life of the mailbox
         self.blobs: list[bytes] = []  # cursor n is blobs[n - 1]
         self.bytes = 0
         self.last_post = now
@@ -46,9 +48,10 @@ class Mailbox:
 
 class RelayCore:
     def __init__(self, max_blobs=MAX_BLOBS, max_bytes=MAX_BYTES, retention=RETENTION_SECONDS,
-                 rate_limit: tuple[int, float] | None = None, clock=time.time):
+                 rate_limit: tuple[int, float] | None = None, clock=time.time, epoch_fn=None):
         self.max_blobs, self.max_bytes, self.retention = max_blobs, max_bytes, retention
         self.rate_limit, self.clock = rate_limit, clock
+        self.epoch_fn = epoch_fn or (lambda: os.urandom(16).hex())
         self.boxes: dict[str, Mailbox] = {}
         self.hits: dict[str, list[float]] = {}
         self.lock = threading.Lock()
@@ -109,11 +112,11 @@ class RelayCore:
         if after < 0 or not 1 <= limit <= MAX_LIMIT:
             return 400, {"error": "bad query"}
         if box is None:
-            return 200, {"batches": [], "more": False}
+            return 200, {"epoch": None, "batches": [], "more": False}
         if not self._authorised(box, token):
             return 403, {"error": "forbidden"}
         page = box.blobs[after:after + limit]
-        return 200, {"batches": [{"cursor": after + i + 1, "blob": wire.b64url(b)} for i, b in enumerate(page)],
+        return 200, {"epoch": box.epoch, "batches": [{"cursor": after + i + 1, "blob": wire.b64url(b)} for i, b in enumerate(page)],
                      "more": after + len(page) < len(box.blobs)}
 
     def _post(self, mailbox_id, box, token, body, declared_length, now):
@@ -129,11 +132,11 @@ class RelayCore:
         if box is None:
             if size > self.max_bytes:
                 return 507, {"error": "mailbox full"}
-            box = self.boxes[mailbox_id] = Mailbox(wire.relay_token_hash(token), now)
+            box = self.boxes[mailbox_id] = Mailbox(wire.relay_token_hash(token), now, self.epoch_fn())
         box.blobs.append(bytes(body))
         box.bytes += size
         box.last_post = now
-        return 201, {"cursor": len(box.blobs)}
+        return 201, {"cursor": len(box.blobs), "epoch": box.epoch}
 
 
 def make_handler(core: RelayCore):

@@ -559,36 +559,59 @@ def relay_cases():
     for blob, label in ((good, "good"), (bytes(tampered), "tampered"), (wrong_aad, "wrongAad")):
         assert (wire.open_batch(batch_key, mailbox, blob) is not None) == (label == "good"), label
 
-    core = relay_mod.RelayCore()
-    posts = [0]
-    current: list = []  # the requests of the step that runs now
+    def epochs():  # the k-th mailbox that a relay of the vectors makes has this epoch
+        k = [0]
 
-    def transport(method, path, body):
-        status, payload = core.handle(method, path, "Bearer " + token, body)
-        entry = {"method": method, "path": path, "status": status}
-        if method == "POST":
-            entry["bodyHex"] = body.hex()
-        entry["response"] = payload
-        current.append(entry)
-        return status, payload
+        def nxt():
+            k[0] += 1
+            return "%032x" % k[0]
+        return nxt
 
-    def next_nonce():
-        posts[0] += 1
-        return nonce(posts[0])
+    def run(plan, core, expire_before=None, clock=None):
+        """Runs one sync for each (device, held, page limit). `held` None means: keep the device."""
+        posts, current, clients, steps = [0], [], {}, []
 
-    clients, steps = {}, []
+        def transport(method, path, body):
+            status, payload = core.handle(method, path, "Bearer " + token, body)
+            entry = {"method": method, "path": path, "status": status}
+            if method == "POST":
+                entry["bodyHex"] = body.hex()
+            entry["response"] = payload
+            current.append(entry)
+            return status, payload
+
+        def next_nonce():
+            posts[0] += 1
+            return nonce(posts[0])
+
+        for i, (name, held, page_limit) in enumerate(plan):
+            if i == expire_before:
+                clock[0] += relay_mod.RETENTION_SECONDS + 1  # the relay deletes the mailbox (SPEC §10.4.5)
+            if held is not None:
+                store = {(o["author"], o["seq"]): o for o in held}
+                clients[name] = wire.RelayClient(GROUP, key, store, transport, next_nonce, page_limit)
+            client = clients[name]
+            before = len(client.ops)
+            current.clear()
+            stored, sent = client.sync()
+            steps.append({"device": name, "pageLimit": page_limit, "heldBefore": before,
+                          "requests": list(current), "stored": stored, "sent": sent, "relayEpoch": client.epoch,
+                          "relayCursor": client.cursor, "relayVector": client.vector, "heldAfter": len(client.ops)})
+        return clients, steps
+
+    core = relay_mod.RelayCore(epoch_fn=epochs())
     plan = [("A", a_ops, 50), ("B", b_ops, 50), ("C", [], 1), ("A", None, 50)]
-    for name, held, page_limit in plan:
-        if held is not None:
-            store = {(o["author"], o["seq"]): o for o in held}
-            clients[name] = wire.RelayClient(GROUP, key, store, transport, next_nonce, page_limit)
-        client = clients[name]
-        before = len(client.ops)
-        current.clear()
-        stored, sent = client.sync()
-        steps.append({"device": name, "pageLimit": page_limit, "heldBefore": before,
-                      "requests": list(current), "stored": stored, "sent": sent,
-                      "relayCursor": client.cursor, "relayVector": client.vector, "heldAfter": len(client.ops)})
+    clients, steps = run(plan, core)
+
+    # Expiry (SPEC §10.4.4 step 4): A syncs, the mailbox expires, B makes it again, then A comes back
+    # with a stale cursor and vector. A must read the new mailbox from the start and send its ops again.
+    t = [1_000_000.0]
+    exp_core = relay_mod.RelayCore(epoch_fn=epochs(), clock=lambda: t[0])
+    exp_plan = [("A", a_ops, 50), ("B", b_ops, 50), ("A", None, 50), ("C", [], 50)]
+    exp_clients, exp_steps = run(exp_plan, exp_core, expire_before=1, clock=t)
+    assert exp_steps[2]["sent"] > 0 and exp_steps[2]["relayEpoch"] == "%032x" % 2
+    exp_final = [exp_clients[n].ops for n in ("A", "C")]  # B synced before A came back
+    assert all(len(st) == len(ops) for st in exp_final)
     final = [clients[n].ops for n in ("A", "B", "C")]
     folds = [ref.canonical(ref.fold(GROUP, list(st.values()))) for st in final]
     assert len(set(folds)) == 1 and all(len(st) == len(ops) for st in final)
@@ -599,7 +622,8 @@ def relay_cases():
                        "SHA-256 of the 64 ASCII characters of the token. 'scenario' runs device A, B, C, A "
                        "against an empty relay, one sync (pull, then push) each; the k-th POST of the whole "
                        "scenario uses nonce k (12 bytes: 8 zero bytes, then k as u32 big-endian). 'requests' "
-                       "lists what the client must send, in order, with the relay answers. 'http' lists "
+                       "lists what the client must send, in order, with the relay answers; the k-th "
+                       "mailbox that the relay makes has epoch k as 32 hex digits. 'http' lists "
                        "single-request checks against a fresh relay.",
         "group": GROUP, "groupKeyHex": key.hex(), "mailboxId": mailbox, "token": token,
         "tokenHashHex": wire.relay_token_hash(token), "batchKeyHex": batch_key.hex(),
@@ -611,6 +635,14 @@ def relay_cases():
                      "steps": steps,
                      "relayBlobCount": len(core.boxes[mailbox].blobs),
                      "endOpRefs": sorted(wire_ref(o) for o in ops), "endFoldBalances": expected["balances"]},
+        "expiryScenario": {"description": "The same devices. Before step 2 (B) the relay deletes the mailbox, so "
+                                          "B makes it again with a new epoch. Step 3 (A) has a stale cursor and "
+                                          "vector: it must reset, read from after=0, and send its ops again. The "
+                                          "k-th mailbox a relay makes has epoch k as 32 hex digits. Nonces count "
+                                          "from 1 again in this run.",
+                           "expireBeforeStep": 1, "steps": exp_steps,
+                           "relayBlobCount": len(exp_core.boxes[mailbox].blobs),
+                           "endOpRefs": sorted(wire_ref(o) for o in ops)},
         "http": relay_http_cases(relay_mod, mailbox, token),
     }
 
@@ -625,7 +657,7 @@ def relay_http_cases(relay_mod, mailbox, token):
     cases = []
 
     def case(name, steps):
-        core = relay_mod.RelayCore()
+        core = relay_mod.RelayCore(epoch_fn=lambda: "%032x" % 1)
         out = []
         for st in steps:
             auth = {"good": "Bearer " + token, "other": "Bearer " + other, "none": None}[st.get("auth", "good")]

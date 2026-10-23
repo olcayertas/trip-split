@@ -65,8 +65,19 @@ def test_blobs_open_and_negative_controls():
     assert wire.open_batch(bk, V["wrongAadMailboxId"], bytes.fromhex(V["wrongAadBlobHex"])) is not None
 
 
-def replay_scenario(make_transport):
-    sc = V["scenario"]
+def epochs():
+    k = [0]
+
+    def nxt():
+        k[0] += 1
+        return "%032x" % k[0]
+    return nxt
+
+
+def replay_scenario(make_transport, key="scenario", before_step=None):
+    sc = V[key]
+    if "initialHeld" not in sc:
+        sc = dict(sc, initialHeld=V["scenario"]["initialHeld"], endFoldBalances=V["scenario"]["endFoldBalances"])
     ops = {"%s:%d" % (o["author"], o["seq"]): o for o in V["ops"]}
 
     def parse(r):
@@ -83,7 +94,9 @@ def replay_scenario(make_transport):
 
     clients = {}
     transport = make_transport(seen)
-    for step in sc["steps"]:
+    for i, step in enumerate(sc["steps"]):
+        if before_step:
+            before_step(i)
         name = step["device"]
         if name not in clients:
             clients[name] = wire.RelayClient(GROUP, KEY, held[name], transport, nxt, step["pageLimit"])
@@ -91,9 +104,11 @@ def replay_scenario(make_transport):
         seen.clear()
         assert len(c.ops) == step["heldBefore"]
         assert c.sync() == (step["stored"], step["sent"]), name
-        assert (c.cursor, c.vector, len(c.ops)) == (step["relayCursor"], step["relayVector"], step["heldAfter"])
+        assert (c.epoch, c.cursor, c.vector, len(c.ops)) == (
+            step["relayEpoch"], step["relayCursor"], step["relayVector"], step["heldAfter"])
         assert seen == step["requests"], "requests differ for device " + name
-    folds = {ref.canonical(ref.fold(GROUP, list(c.ops.values()))) for c in clients.values()}
+    last = {s["device"] for s in sc["steps"][-2:]}  # the two devices that synced last hold everything
+    folds = {ref.canonical(ref.fold(GROUP, list(clients[n].ops.values()))) for n in last}
     assert len(folds) == 1
     assert sorted("%s:%d" % k for k in clients["A"].ops) == sc["endOpRefs"]
     assert ref.fold(GROUP, list(clients["A"].ops.values()))["balances"] == sc["endFoldBalances"]
@@ -108,7 +123,7 @@ def record(seen, method, path, body, status, payload):
 
 
 def test_scenario_in_process():
-    core = relay.RelayCore()
+    core = relay.RelayCore(epoch_fn=epochs())
 
     def make(seen):
         def t(method, path, body):
@@ -122,7 +137,7 @@ def test_scenario_in_process():
 
 
 def test_scenario_over_http():
-    server = relay.serve(relay.RelayCore())
+    server = relay.serve(relay.RelayCore(epoch_fn=epochs()))
     conn = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=10)
 
     def make(seen):
@@ -141,13 +156,54 @@ def test_scenario_over_http():
         server.shutdown()
 
 
+def test_expiry_scenario_resets_the_stale_client():
+    t = [1_000_000.0]
+    core = relay.RelayCore(epoch_fn=epochs(), clock=lambda: t[0])
+
+    def make(seen):
+        def tr(method, path, body):
+            status, payload = core.handle(method, path, AUTH["good"], body)
+            record(seen, method, path, body, status, payload)
+            return status, payload
+        return tr
+
+    def before(i):
+        if i == V["expiryScenario"]["expireBeforeStep"]:
+            t[0] += relay.RETENTION_SECONDS + 1
+
+    replay_scenario(make, "expiryScenario", before)
+    assert len(core.boxes[MAILBOX].blobs) == V["expiryScenario"]["relayBlobCount"]
+
+
+def test_stale_client_without_the_epoch_rule_loses_ops():
+    """Negative control: after an expiry, a client that keeps its old vector sends nothing to the new
+    mailbox, so a newcomer gets nothing. The epoch rule is what makes the client send again."""
+    t = [1_000_000.0]
+    core = relay.RelayCore(epoch_fn=epochs(), clock=lambda: t[0])
+    tr = core_transport(core)
+    held = {(o["author"], o["seq"]): o for o in V["ops"]}
+    a = wire.RelayClient(GROUP, KEY, dict(held), tr)
+    a.sync()
+    t[0] += relay.RETENTION_SECONDS + 1
+    wire.RelayClient(GROUP, KEY, {(V["ops"][0]["author"], 1): V["ops"][0]}, tr).sync()  # a new mailbox
+    stale = wire.RelayClient(GROUP, KEY, dict(held), tr)
+    stale.on_relay = set(a.on_relay)  # the old vector, and no pull that could see the new epoch
+    assert stale.push() == 0
+    newcomer = wire.RelayClient(GROUP, KEY, {}, tr)
+    newcomer.pull()
+    assert len(newcomer.ops) == 1
+    a.sync()  # with the epoch rule
+    newcomer.pull()
+    assert len(newcomer.ops) == len(V["ops"])
+
+
 def body_of(step):
     return b"\x01" * step["bodyBytes"] if "bodyBytes" in step else None
 
 
 def test_http_cases_in_process():
     for case in V["http"]:
-        core = relay.RelayCore()
+        core = relay.RelayCore(epoch_fn=epochs())
         for st in case["steps"]:
             got = core.handle(st["method"], st["path"], AUTH[st["auth"]], body_of(st))
             assert got == (st["status"], st["response"]), (case["name"], st)
@@ -155,7 +211,7 @@ def test_http_cases_in_process():
 
 def test_http_cases_over_a_socket():
     for case in V["http"]:
-        server = relay.serve(relay.RelayCore())
+        server = relay.serve(relay.RelayCore(epoch_fn=epochs()))
         port = server.server_address[1]
         try:
             conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
@@ -180,7 +236,7 @@ def test_full_mailbox_gets_507():
 
 
 def test_token_hash_is_stored_not_the_token():
-    core = relay.RelayCore()
+    core = relay.RelayCore(epoch_fn=epochs())
     core_transport(core)("POST", PATH, b"x" * 30)
     box = core.boxes[MAILBOX]
     assert box.token_hash == V["tokenHashHex"] and TOKEN not in vars(box).values()
@@ -190,12 +246,13 @@ def test_retention_deletes_after_400_days():
     now = [1000.0]
     core = relay.RelayCore(clock=lambda: now[0])
     t = core_transport(core)
-    t("POST", PATH, b"x" * 30)
+    first_epoch = t("POST", PATH, b"x" * 30)[1]["epoch"]
     now[0] += 399 * 86400
     assert len(t("GET", PATH, None)[1]["batches"]) == 1
     now[0] += 2 * 86400  # 401 days after the last POST
-    assert t("GET", PATH, None) == (200, {"batches": [], "more": False})
-    assert core_transport(core, "e" * 64)("POST", PATH, b"x" * 30) == (201, {"cursor": 1})  # new owner, cursor 1
+    assert t("GET", PATH, None) == (200, {"epoch": None, "batches": [], "more": False})
+    status, answer = core_transport(core, "e" * 64)("POST", PATH, b"x" * 30)  # new owner, cursor 1, new epoch
+    assert (status, answer["cursor"]) == (201, 1) and answer["epoch"] != first_epoch
 
 
 def test_rate_limit_gets_429():
@@ -204,7 +261,7 @@ def test_rate_limit_gets_429():
 
 
 def test_client_skips_bad_blobs_and_continues():
-    t = core_transport(relay.RelayCore())
+    t = core_transport(relay.RelayCore(epoch_fn=epochs()))
     bk = wire.relay_batch_key(KEY, GROUP)
     ops = V["ops"]
     t("POST", PATH, bytes.fromhex(V["tamperedBlobHex"]))  # does not decrypt
@@ -232,7 +289,7 @@ def test_push_splits_into_batches_of_64():
               "body": {"memberId": author, "name": "n%d" % seq}}
         op["hash"] = ref.op_hash(op)
         ops[(author, seq)] = op
-    core = relay.RelayCore()
+    core = relay.RelayCore(epoch_fn=epochs())
     c = wire.RelayClient(GROUP, KEY, ops, core_transport(core))
     assert c.push() == 130
     assert [len(open_ops(b)) for b in core.boxes[MAILBOX].blobs] == [64, 64, 2]
@@ -241,7 +298,7 @@ def test_push_splits_into_batches_of_64():
 
 def test_newcomer_pulls_first_and_pushes_nothing():
     ops = {(o["author"], o["seq"]): o for o in V["ops"]}
-    core = relay.RelayCore()
+    core = relay.RelayCore(epoch_fn=epochs())
     wire.RelayClient(GROUP, KEY, dict(ops), core_transport(core)).sync()
     before = len(core.boxes[MAILBOX].blobs)
     assert wire.RelayClient(GROUP, KEY, {}, core_transport(core)).sync() == (len(ops), 0)
