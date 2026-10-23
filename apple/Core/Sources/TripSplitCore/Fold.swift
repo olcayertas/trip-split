@@ -85,9 +85,10 @@ public func fold(groupId: String, ops: [JSONValue]) -> JSONValue {
         case "member.claim":
             claim(s("memberId"), author)
         case "member.unclaim":
-            if members[s("memberId")]?.claimedBy == author {
+            // Any device may release any claim (SPEC §4.4).
+            if let holder = members[s("memberId")]?.claimedBy {
                 members[s("memberId")]!.claimedBy = nil
-                claimOfDevice[author] = nil
+                claimOfDevice[holder] = nil
             }
         case "member.remove":
             let id = s("memberId")

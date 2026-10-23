@@ -731,7 +731,7 @@
     },
     {
       "name": "claims",
-      "note": "B wins Ayşe (lower HLC); B moves to Can, which frees Ayşe for C; A cannot unclaim Can; A moves from Ali to Deniz.",
+      "note": "B wins Ayşe (lower HLC); B moves to Can, which frees Ayşe for C; A releases Can, which B held; A moves from Ali to Deniz.",
       "group": "00000000-0000-4000-8000-000000000001",
       "ops": [
         {
@@ -883,7 +883,7 @@
             "id": "30000000-0000-4000-8000-000000000003",
             "name": "Can",
             "removed": false,
-            "claimedBy": "bbbbbbbb-0000-4000-8000-000000000002"
+            "claimedBy": null
           },
           {
             "id": "40000000-0000-4000-8000-000000000004",
@@ -899,6 +899,74 @@
           "20000000-0000-4000-8000-000000000002": 0,
           "30000000-0000-4000-8000-000000000003": 0,
           "40000000-0000-4000-8000-000000000004": 0
+        },
+        "suggestedPayments": [],
+        "invalidOps": [],
+        "unknownOps": []
+      }
+    },
+    {
+      "name": "takeover after restore",
+      "note": "A holds Ali. C releases Ali, then claims Ali. C holds Ali and A holds nothing.",
+      "group": "00000000-0000-4000-8000-000000000001",
+      "ops": [
+        {
+          "v": 1,
+          "group": "00000000-0000-4000-8000-000000000001",
+          "author": "aaaaaaaa-0000-4000-8000-000000000001",
+          "seq": 1,
+          "hlc": "001761210000000-0000-aaaaaaaa-0000-4000-8000-000000000001",
+          "type": "group.create",
+          "body": {
+            "name": "Kapadokya 2026",
+            "baseCurrency": "EUR",
+            "creatorMemberId": "10000000-0000-4000-8000-000000000001",
+            "creatorName": "Ali"
+          },
+          "hash": "10a11a92ccce30220b4c1ca2637827319c94b578aaee519de1302e6415ada543"
+        },
+        {
+          "v": 1,
+          "group": "00000000-0000-4000-8000-000000000001",
+          "author": "cccccccc-0000-4000-8000-000000000003",
+          "seq": 1,
+          "hlc": "001761210000010-0000-cccccccc-0000-4000-8000-000000000003",
+          "type": "member.unclaim",
+          "body": {
+            "memberId": "10000000-0000-4000-8000-000000000001"
+          },
+          "hash": "6165e7a081a305d7bb39b06ee8bd4203c065cfe16bca2a72ddb599dc711a6f4e"
+        },
+        {
+          "v": 1,
+          "group": "00000000-0000-4000-8000-000000000001",
+          "author": "cccccccc-0000-4000-8000-000000000003",
+          "seq": 2,
+          "hlc": "001761210000011-0000-cccccccc-0000-4000-8000-000000000003",
+          "type": "member.claim",
+          "body": {
+            "memberId": "10000000-0000-4000-8000-000000000001"
+          },
+          "hash": "f1db0b52b273432c8594382d3b7d56035340e6dfb553abb67a83b1074794e332"
+        }
+      ],
+      "expected": {
+        "group": {
+          "name": "Kapadokya 2026",
+          "baseCurrency": "EUR"
+        },
+        "members": [
+          {
+            "id": "10000000-0000-4000-8000-000000000001",
+            "name": "Ali",
+            "removed": false,
+            "claimedBy": "cccccccc-0000-4000-8000-000000000003"
+          }
+        ],
+        "expenses": [],
+        "settlements": [],
+        "balances": {
+          "10000000-0000-4000-8000-000000000001": 0
         },
         "suggestedPayments": [],
         "invalidOps": [],

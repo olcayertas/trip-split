@@ -447,9 +447,10 @@ def fold(group_id: str, ops: list[dict]) -> dict:
             claim(b["memberId"], author)
         elif t == "member.unclaim":
             member = members.get(b["memberId"])
-            if member is not None and member["claimedBy"] == author:
+            # Any device may release any claim (SPEC §4.4): a restored phone must free its old member.
+            if member is not None and member["claimedBy"] is not None:
+                del claim_of_device[member["claimedBy"]]
                 member["claimedBy"] = None
-                del claim_of_device[author]
         elif t == "member.remove":
             member = members.get(b["memberId"])
             if member is not None and not member["removed"]:
