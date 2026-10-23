@@ -172,6 +172,40 @@ Tell your group to follow these steps:
 
 After the install, switch off "install unknown apps" for that browser.
 
+## Internet relay (Cloudflare Worker)
+
+The relay is in `relay/` (SPEC §10.4). It is a Cloudflare Worker with one SQLite-backed Durable Object
+for each mailbox. The free plan is enough for v1. CI never deploys it. The owner deploys it by hand.
+
+**Warning:** `wrangler deploy` publishes the Worker to the internet. Do it only when you want the relay live.
+
+One-time setup (owner):
+
+1. Make a free account at https://dash.cloudflare.com/sign-up. Verify the e-mail address.
+2. Install the packages: `cd relay && npm ci`.
+3. Log in: `npx wrangler login`. A browser window opens. Allow the access.
+4. Deploy: `npx wrangler deploy`. The first deploy applies the migration `v1` (`new_sqlite_classes`).
+   Wrangler prints the URL: `https://tripsplit-relay.<your-subdomain>.workers.dev`.
+5. Check it. This call must answer `200` with an empty list:
+   `curl -s https://tripsplit-relay.<your-subdomain>.workers.dev/v1/m/00000000000000000000000000000000/batches`
+6. Give the URL to the app builds (no trailing slash):
+   - iOS: build setting `RELAY_BASE_URL` (it goes to `RelayBaseURL` in Info.plist).
+   - Android: Gradle property `-PrelayBaseUrl=https://...`.
+   Without it, a build has no working relay address (the Android default is `https://relay.invalid`).
+
+Later deploys: `cd relay && npm test && npx wrangler deploy`.
+
+Operation notes:
+
+- Limits: 20 000 blobs and 64 MiB for each mailbox, 320 KiB for each blob, 600 requests per minute for each
+  mailbox. A mailbox is deleted 400 days after its last upload (a Durable Object alarm does it).
+- To limit requests for each IP address, add a rate limiting rule in the Cloudflare dashboard (Security,
+  WAF). The Worker itself limits only for each mailbox.
+- To see errors live: `npx wrangler tail`. The Worker logs nothing about requests.
+- Free plan limits can change. Watch the usage under Workers & Pages in the dashboard.
+- To remove everything: `npx wrangler delete`. This deletes the Worker and all mailboxes. The phones keep
+  all their data.
+
 ## Privacy page
 
 The workflow `.github/workflows/pages.yml` publishes `docs/privacy/` when a change reaches `main`. The page is at `https://olcayertas.github.io/trip-split/`. GitHub Pages is set to the "GitHub Actions" source for this repo. To publish by hand, run the workflow from the Actions tab.

@@ -73,7 +73,7 @@ with an in-memory pair of fake links.
 ### 4.1 Why an operation log
 
 Every device can write while offline. Two devices can edit the same expense before they meet. A
-server cannot decide the winner because there is no server. So the source of truth is an
+server cannot decide the winner because there is no central server. So the source of truth is an
 **append-only log of operations** (ops). Every device holds a copy of the log for each group. Sync is
 "give me the ops that I do not have". The visible state (expenses, balances) is a deterministic
 **fold** of the log. Two devices that hold the same set of ops always show the same state, in any
