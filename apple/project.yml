@@ -18,6 +18,8 @@ packages:
     path: Core
   Store:
     path: Store
+  Net:
+    path: Net
 targets:
   TripSplit:
     type: application
@@ -29,6 +31,8 @@ targets:
         product: TripSplitCore
       - package: Store
         product: TripSplitStore
+      - package: Net
+        product: TripSplitNet
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.olcayertas.TripSplit
@@ -45,6 +49,8 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
+        NSLocalNetworkUsageDescription: TripSplit finds the other phones of your group on the same Wi-Fi network and syncs the group with them.
+        NSBonjourServices: [_tripsplit._tcp]
   TripSplitUITests:
     type: bundle.ui-testing
     platform: iOS

@@ -18,6 +18,14 @@ jobs:
       - run: swift test
         working-directory: apple/Store
 
+  net:
+    name: Swift net (LAN transport)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+        working-directory: apple/Net
+
   app:
     name: App build (simulator)
     runs-on: macos-15
