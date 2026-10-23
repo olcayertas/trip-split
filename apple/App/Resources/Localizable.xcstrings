@@ -251,6 +251,16 @@
         }
       }
     },
+    "Add %@ to earlier expenses?": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ önceki harcamalara da eklensin mi?"
+          }
+        }
+      }
+    },
     "Add expense": {
       "localizations": {
         "tr": {
@@ -307,6 +317,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ayarlar'dan TripSplit için kameraya izin verin veya davet bağlantısını yapıştırın."
+          }
+        }
+      }
+    },
+    "Also earlier expenses": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki harcamalar da"
           }
         }
       }
@@ -611,6 +631,26 @@
         }
       }
     },
+    "From now on": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bundan sonra"
+          }
+        }
+      }
+    },
+    "From now on: earlier expenses do not change. Also earlier expenses: %lld expenses change.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bundan sonra: önceki harcamalar değişmez. Önceki harcamalar da: %lld harcama değişir."
+          }
+        }
+      }
+    },
     "Gets back": {
       "localizations": {
         "tr": {
@@ -807,6 +847,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Üyeler"
+          }
+        }
+      }
+    },
+    "Members with another phone": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başka telefonu olan üyeler"
           }
         }
       }
@@ -1291,6 +1341,26 @@
         }
       }
     },
+    "Take over": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devral"
+          }
+        }
+      }
+    },
+    "Take over %@?": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ devralınsın mı?"
+          }
+        }
+      }
+    },
     "The camera is not available": {
       "localizations": {
         "tr": {
@@ -1351,6 +1421,16 @@
         }
       }
     },
+    "These expenses have exact amounts and stay as they are. Edit them by hand: %@.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu harcamalarda tam tutarlar var ve olduğu gibi kalır. Elle düzenleyin: %@."
+          }
+        }
+      }
+    },
     "This is me": {
       "localizations": {
         "tr": {
@@ -1367,6 +1447,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bu bağlantı geçerli değil."
+          }
+        }
+      }
+    },
+    "This member is linked to another phone. Take it over only if that phone is yours or lost.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu üye başka bir telefona bağlı. Yalnızca o telefon sizinse veya kaybolduysa devralın."
           }
         }
       }
@@ -1427,6 +1517,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bilinmeyen üye"
+          }
+        }
+      }
+    },
+    "Use this if the member was linked to your old phone, for example before a restore.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üye eski telefonunuza bağlıysa, örneğin yedekten geri yüklemeden önce, bunu kullanın."
           }
         }
       }

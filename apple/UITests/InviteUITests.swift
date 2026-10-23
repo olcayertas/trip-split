@@ -57,3 +57,51 @@ final class InviteUITests: XCTestCase {
         app.alerts.buttons["Cancel"].tap()
     }
 }
+
+extension InviteUITests {
+    /// "From now on" is the default: a member added later does not join the earlier expenses.
+    @MainActor
+    func testNewMemberFromNowOnLeavesEarlierExpenses() throws {
+        let app = launch()
+        let create = app.buttons["createGroupEmpty"]
+        XCTAssertTrue(create.waitForExistence(timeout: 10))
+        create.tap()
+        let groupName = app.textFields["groupName"]
+        XCTAssertTrue(groupName.waitForExistence(timeout: 5))
+        groupName.tap()
+        groupName.typeText("Trip")
+        app.buttons["createGroupConfirm"].tap()
+
+        // An expense that only the creator is in.
+        let add = app.buttons["addExpense"]
+        XCTAssertTrue(add.waitForExistence(timeout: 10))
+        add.tap()
+        let title = app.textFields["expenseTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        title.tap()
+        title.typeText("Taxi")
+        let amount = app.textFields["expenseAmount"]
+        amount.tap()
+        amount.typeText("30")
+        let save = app.buttons["saveExpense"]
+        expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: save)
+        waitForExpectations(timeout: 5)
+        save.tap()
+
+        // Add a member: the app asks about the earlier expenses.
+        app.tabBars.buttons.element(boundBy: 2).tap()
+        app.buttons["addMember"].tap()
+        let name = app.textFields["nameField"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Ayse")
+        app.buttons["nameConfirm"].tap()
+        let also = app.buttons["Also earlier expenses"]
+        XCTAssertTrue(also.waitForExistence(timeout: 10))
+        app.buttons["From now on"].tap()
+
+        // The default changed nothing: nobody owes anything.
+        app.tabBars.buttons.element(boundBy: 1).tap()
+        XCTAssertTrue(app.staticTexts["Everyone is settled."].waitForExistence(timeout: 5))
+    }
+}

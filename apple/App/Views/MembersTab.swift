@@ -5,11 +5,13 @@ import TripSplitStore
 struct MembersTab: View {
     let repository: GroupRepository
     let groupId: String
+    var onNewMember: (String) -> Void = { _ in }
     @State private var adding = false
     @State private var renaming: GroupState.Member?
     @State private var removing: GroupState.Member?
     @State private var claimFailed = false
     @State private var inviting = false
+    @State private var claiming = false
     @State private var lostMember: GroupState.Member?
 
     private var state: GroupState { repository.state(of: groupId) }
@@ -54,6 +56,12 @@ struct MembersTab: View {
                 }
             }
             Section {
+                if mine == nil {
+                    Button { claiming = true } label: { Label("Who are you?", systemImage: "person.crop.circle.badge.questionmark") }
+                        .buttonStyle(M3TextButtonStyle())
+                        .accessibilityIdentifier("whoAreYou")
+                        .m3Row()
+                }
                 Button { inviting = true } label: { Label("Invite", systemImage: "qrcode") }
                     .buttonStyle(M3TextButtonStyle())
                     .accessibilityIdentifier("invite")
@@ -86,10 +94,15 @@ struct MembersTab: View {
             lostMember = lostClaim(history: history, deviceId: repository.deviceId, state: state)
         }
         .sheet(isPresented: $inviting) { InviteView(repository: repository, groupId: groupId) }
+        .sheet(isPresented: $claiming) { ClaimSheet(repository: repository, groupId: groupId, onNewMember: onNewMember) }
         .sheet(isPresented: $adding) {
             NameSheet(title: "Add member", initial: "", confirm: "Add") { name in
-                Task { _ = try? await repository.append(groupId: groupId, type: "member.add", body: .object([
-                    "memberId": .string(UUID().uuidString.lowercased()), "name": .string(name)])) }
+                let id = UUID().uuidString.lowercased()
+                Task {
+                    _ = try? await repository.append(groupId: groupId, type: "member.add", body: .object([
+                        "memberId": .string(id), "name": .string(name)]))
+                    onNewMember(id)
+                }
             }
         }
         .sheet(item: $renaming) { m in

@@ -555,3 +555,56 @@ struct LostClaimTests {
         #expect(lostClaim(history: historyEntries(ops: ops), deviceId: other, state: state) == nil)
     }
 }
+
+@Suite("Newcomer edits")
+struct NewcomerTests {
+    private let a = "10000000-0000-4000-8000-000000000001"
+    private let b = "20000000-0000-4000-8000-000000000002"
+    private let c = "30000000-0000-4000-8000-000000000003"
+
+    private func state() -> GroupState {
+        var w = Writer(device: "aaaaaaaa-0000-4000-8000-000000000001")
+        func money(_ split: JSONValue, _ amount: Int64) -> JSONValue {
+            .object(["amountMinor": .int(amount), "currency": .string("EUR"), "rate": .string("1"), "split": split])
+        }
+        func expense(_ n: Int, _ split: JSONValue, _ amount: Int64) -> JSONValue {
+            w.op(type: "expense.add", body: .object([
+                "expenseId": .string("e0000000-0000-4000-8000-00000000000\(n)"), "title": .string("E\(n)"), "date": .string("2026-10-20"),
+                "category": .string("food"), "paidBy": .string(a), "money": money(split, amount)]), wall: 2_000 + Int64(n))
+        }
+        var ops: [JSONValue] = [
+            w.op(type: "group.create", body: .object(["name": .string("T"), "baseCurrency": .string("EUR"),
+                "creatorMemberId": .string(a), "creatorName": .string("A")]), wall: 1_000),
+            w.op(type: "member.add", body: .object(["memberId": .string(b), "name": .string("B")]), wall: 1_001),
+            w.op(type: "member.add", body: .object(["memberId": .string(c), "name": .string("C")]), wall: 1_002),
+        ]
+        ops.append(expense(1, .object(["mode": .string("equal"), "members": .array([.string(a), .string(b)])]), 1000))
+        ops.append(expense(2, .object(["mode": .string("weights"), "weights": .object([a: .int(2), b: .int(1)])]), 900))
+        ops.append(expense(3, .object(["mode": .string("exact"), "shares": .object([a: .int(400), b: .int(100)])]), 500))
+        ops.append(expense(4, .object(["mode": .string("equal"), "members": .array([.string(a), .string(c)])]), 200))  // already has C
+        ops.append(expense(5, .object(["mode": .string("equal"), "members": .array([.string(a)])]), 300))
+        ops.append(w.op(type: "expense.delete", body: .object(["expenseId": .string("e0000000-0000-4000-8000-000000000005")]), wall: 3_000))
+        return GroupState(foldResult: fold(groupId: groupId, ops: ops))
+    }
+
+    @Test func buildsOneEditForEachChangedExpense() throws {
+        let plan = newcomerEdits(memberId: c, state: state())
+        // E1 (equal) and E2 (weights) change. E3 (exact) is listed. E4 already has C. E5 is deleted.
+        #expect(plan.edits.count == 2)
+        #expect(plan.exactExpenses.map(\.title) == ["E3"])
+        for edit in plan.edits {
+            #expect(isValidBody(type: "expense.edit", body: edit["fields"] == nil ? .null : edit))
+        }
+        let ids = plan.edits.map { $0["expenseId"]!.stringValue! }
+        #expect(Set(ids) == ["e0000000-0000-4000-8000-000000000001", "e0000000-0000-4000-8000-000000000002"])
+        let equal = plan.edits.first { $0["expenseId"]?.stringValue?.hasSuffix("1") == true }!
+        #expect(equal["fields"]?["money"]?["split"]?["members"]?.arrayValue?.count == 3)
+        let weights = plan.edits.first { $0["expenseId"]?.stringValue?.hasSuffix("2") == true }!
+        #expect(weights["fields"]?["money"]?["split"]?["weights"]?[c] == .int(1))
+    }
+
+    @Test func nothingToDoWhenAlreadyIn() {
+        let plan = newcomerEdits(memberId: a, state: state())
+        #expect(plan.edits.isEmpty && plan.exactExpenses.isEmpty)
+    }
+}

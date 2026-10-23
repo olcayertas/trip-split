@@ -6,11 +6,17 @@ import TripSplitStore
 struct ClaimSheet: View {
     let repository: GroupRepository
     let groupId: String
+    var onNewMember: (String) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
     @State private var lost: GroupState.Member?
     @State private var busy = false
+    @State private var takingOver: GroupState.Member?
 
     private var state: GroupState { repository.state(of: groupId) }
+    /// Members that another phone holds. A restored or lost phone can take them over (SPEC §4.4).
+    private var held: [GroupState.Member] {
+        state.members.filter { !$0.removed && $0.claimedBy != nil && $0.claimedBy != repository.deviceId }
+    }
     private var free: [GroupState.Member] { state.members.filter { !$0.removed && $0.claimedBy == nil } }
 
     var body: some View {
@@ -47,6 +53,25 @@ struct ClaimSheet: View {
                         .m3Row()
                     }
                 }
+                if !held.isEmpty {
+                    Section {
+                        ForEach(held) { m in
+                            HStack {
+                                Text(m.name).m3(M3Type.titleMedium).foregroundStyle(M3Color.onSurface)
+                                Spacer()
+                                Button("Take over") { takingOver = m }
+                                    .buttonStyle(M3TonalButtonStyle())
+                                    .accessibilityIdentifier("takeOver-\(m.name)")
+                            }
+                            .frame(minHeight: 56)
+                            .m3Row()
+                        }
+                    } header: {
+                        Text("Members with another phone")
+                    } footer: {
+                        Text("Use this if the member was linked to your old phone, for example before a restore.")
+                    }
+                }
                 Section {
                     Button { addMe() } label: { Label("I am not in the list. Add me.", systemImage: "person.badge.plus") }
                         .buttonStyle(M3TextButtonStyle())
@@ -56,6 +81,13 @@ struct ClaimSheet: View {
             }
             .m3Screen()
             .disabled(busy)
+            .confirmationDialog("Take over \(takingOver?.name ?? "")?", isPresented: Binding(get: { takingOver != nil }, set: { if !$0 { takingOver = nil } }),
+                                titleVisibility: .visible, presenting: takingOver) { m in
+                Button("Take over") { takeOver(m) }
+                Button("Cancel", role: .cancel) {}
+            } message: { _ in
+                Text("This member is linked to another phone. Take it over only if that phone is yours or lost.")
+            }
             .navigationTitle("Who are you?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() } } }
@@ -72,6 +104,16 @@ struct ClaimSheet: View {
         }
     }
 
+    private func takeOver(_ m: GroupState.Member) {
+        busy = true
+        Task {
+            _ = try? await repository.append(groupId: groupId, type: "member.unclaim", body: .object(["memberId": .string(m.id)]))
+            _ = try? await repository.append(groupId: groupId, type: "member.claim", body: .object(["memberId": .string(m.id)]))
+            busy = false
+            if repository.myMember(in: groupId)?.id == m.id { dismiss() } else { lost = m }
+        }
+    }
+
     private func addMe() {
         busy = true
         let id = UUID().uuidString.lowercased()
@@ -81,6 +123,7 @@ struct ClaimSheet: View {
             _ = try? await repository.append(groupId: groupId, type: "member.claim", body: .object(["memberId": .string(id)]))
             busy = false
             dismiss()
+            onNewMember(id)
         }
     }
 }
