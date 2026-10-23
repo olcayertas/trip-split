@@ -271,6 +271,7 @@ Each frame holds one message: canonical JSON with a key `t`.
 | `done` | `vector` |
 
 A receiver ignores keys it does not know and closes on a message with an unknown `t`.
+`maxChunk` is the largest BLE chunk the sender accepts (§10.2.5). LAN sends `0` and ignores the peer value.
 
 ### 8.3 Session
 
@@ -301,5 +302,236 @@ Anything else is invalid. Vectors: `invite.json`.
 
 ## 10. Transports
 
-Wi-Fi LAN (DNS-SD `_tripsplit._tcp`, TCP port 47831 fallback) and BLE (GATT) carry the same byte
-stream: the handshake records, then frames. The transport rules are in `docs/PLAN.md` §9.
+Wi-Fi LAN and BLE carry the same messages: the two handshake records (§8.1), then frames. LAN sends
+them as a plain TCP byte stream. BLE sends each record and each frame as a **message** split into
+chunks (§10.2.4). Everything above the transport (§8) is identical.
+
+A device that holds several groups runs one session per connection. The group of a connection is
+chosen by the discovery tag in the handshake record.
+
+### 10.1 Wi-Fi LAN
+
+#### 10.1.1 Advertise and listen
+
+- A device that has the sync screen open listens on TCP. It first tries to bind port **47831**. If that
+  port is busy, it binds any free port.
+- It publishes DNS-SD service type `_tripsplit._tcp` (domain `local.`) on the port it bound.
+- The instance name is `TripSplit-` followed by the first 8 hex characters of its `deviceId`. If the
+  name is taken, the platform appends its own suffix. The name carries no meaning.
+- The TXT record holds exactly these keys:
+
+| key | value |
+|---|---|
+| `v` | `1` (the highest protocol version the device speaks) |
+| `d` | the `deviceId` |
+| `t` | the discovery tags (§8.1) of the groups the device holds, as 24 lowercase hex characters each, joined by `,`. At most 8 tags. The value is at most 199 bytes. |
+
+A device that holds more than 8 groups publishes the 8 groups it used last. A reader ignores TXT keys
+it does not know.
+
+#### 10.1.2 Discover and connect
+
+1. A device browses for `_tripsplit._tcp` while the sync screen is open.
+2. It ignores its own `deviceId`. It ignores a service whose `t` value shares no tag with a local
+   group.
+3. For each shared tag it may open one TCP connection to the resolved address and port. The connecting
+   side is the **initiator**. Both devices may connect to each other. §8.3 step 7 closes the
+   duplicate.
+4. **Fallback:** if no service appears in 5 seconds, the device tries TCP port 47831 on the default
+   gateway address. On success the session starts as usual. The device repeats the attempt every 15
+   seconds while the sync screen is open and no peer is known.
+5. The initiator sets `TCP_NODELAY`. Both sides use it for all sockets.
+
+#### 10.1.3 Who writes first
+
+- The initiator writes its 31-byte record immediately after the TCP connection opens.
+- The responder reads 31 bytes, checks them (§8.1 step 3), then writes its own record.
+- When a side has read the other record, it derives the session key and writes its `hello` frame. It
+  does not wait for the `hello` of the other side.
+- Records and frames are written back to back. No padding. No chunk header. Frames use the `u32` length
+  prefix of §8.1.
+
+#### 10.1.4 Timeouts and close
+
+| event | limit | action |
+|---|---|---|
+| TCP connect | 5 s | give up on this attempt |
+| responder record, after the initiator wrote its record | 5 s | close |
+| `hello` of the peer, after both records | 10 s | close |
+| no byte received while the session is open | 30 s | close |
+| whole session | 10 min | close |
+
+- When both `done` messages are sent and received, the initiator closes the TCP connection. The
+  responder closes when it reads the end of the stream. If the responder has not seen it after 5 s, it
+  closes.
+- A protocol error (§8.1 step 9, §8.3 step 3 `hash`, an unknown message `t`, a bad `ops` size) closes the
+  TCP connection at once. The device sends nothing first.
+- After any session with a peer, the device waits 30 s before it syncs with that peer again (§8.3), unless
+  a new local op exists.
+
+### 10.2 Bluetooth Low Energy
+
+#### 10.2.1 GATT service
+
+All UUIDs are fixed. They are 128-bit values. Compare them without regard to case.
+
+| name | UUID | properties |
+|---|---|---|
+| TripSplit service | `717ed7c0-0ed4-4251-a5b1-606fa1771f42` | primary service |
+| `rx` | `33f56749-2c8f-4bb9-9d1b-3b27fa731a8f` | **write** (with response). Central → peripheral. |
+| `tx` | `bd1e5af2-f0f9-49f7-9128-63c490a78986` | **notify**. Peripheral → central. Has a CCCD. |
+| `info` | `c9698bc0-ddbd-4f16-8bd3-9c7d34135fba` | **read**. Static for the whole advertise period. |
+
+- The advertisement holds the service UUID. It holds no other TripSplit data.
+- `rx` accepts only write with response. A peripheral must not offer write without response.
+- No pairing. No bonding. No encryption at the link layer. §8.1 protects the data.
+- A peripheral must not notify on `tx` before the central has enabled notifications. The central must
+  enable notifications before it writes to `rx`.
+
+#### 10.2.2 The `info` characteristic
+
+The value is canonical JSON (§2), UTF-8, at most 512 bytes. A reader may need ATT long reads.
+
+```json
+{"deviceId":"<id>","maxChunk":185,"protocolVersion":1,"roles":["central","peripheral"],"tags":["<24 hex>"]}
+```
+
+| key | value |
+|---|---|
+| `protocolVersion` | integer, highest version the device speaks |
+| `deviceId` | the `deviceId` |
+| `maxChunk` | integer 20–512: the largest chunk the device accepts on `rx` (§10.2.5) |
+| `roles` | array, sorted, a subset of `"central"`, `"peripheral"`. It names the roles the device can use now. A peripheral always lists `"peripheral"`. |
+| `tags` | the discovery tags, 24 lowercase hex characters each, at most 8, same order rule as §10.1.1 |
+
+A reader ignores keys it does not know. A reader that cannot parse `info` disconnects.
+
+#### 10.2.3 Roles and connection setup
+
+- While the sync screen is open, a device scans for the service UUID. It also advertises and serves the
+  GATT service when its hardware allows (`roles` lists `"peripheral"`). A device that cannot advertise
+  is central only.
+- The **central** is the initiator (§8.1). Only the central starts a session. The peripheral is the
+  responder.
+- Setup order for the central:
+  1. Connect. Limit: 10 s.
+  2. Request MTU 512 (Android). iOS negotiates alone.
+  3. Discover the TripSplit service and its three characteristics.
+  4. Read `info`.
+  5. Enable notifications on `tx`.
+  6. Decide (below). If it continues, write the handshake record (§10.2.4) to `rx`.
+  Steps 2 to 5 take at most 10 s together. On a timeout the central disconnects.
+- The central disconnects at step 6 when `info.tags` shares no tag with a local group, or when
+  `info.protocolVersion` is lower than 1.
+- **Who is central when both can be:** if `info.roles` contains `"central"` and the local `deviceId` is
+  greater than `info.deviceId` (byte order), the local device is **not** the central for this pair. It
+  disconnects at step 6 and expects the peer to connect to it. If no session from that peer starts in 15 s,
+  the local device connects again and acts as central. In every other case it acts as central.
+- A peripheral serves any number of centrals. Each connection has its own chunk counters and its own
+  session.
+
+#### 10.2.4 Messages and chunks
+
+BLE carries a sequence of **messages** in each direction. A message is one handshake record (31 bytes) or
+one frame (§8.1, with its `u32` length prefix). A message is never empty.
+
+A **chunk** is one ATT value (a write to `rx` or a notification on `tx`):
+
+```
+byte 0       flags   bit 0 (0x01) FIRST: this chunk starts a message
+                     bit 1 (0x02) LAST:  this chunk ends a message
+                     bit 2 (0x04) ABORT: the sender closes the session
+                     bits 3-7: must be 0
+bytes 1-2    seq     u16 big-endian
+bytes 3...   payload message bytes
+```
+
+- A message of `n` bytes at chunk size `c` uses `ceil(n / (c − 3))` chunks. The payload of every chunk
+  except the last holds exactly `c − 3` bytes. The first chunk has FIRST. The last chunk has LAST. A
+  message that fits in one chunk has both flags (`0x03`).
+- `seq` is a counter for each direction and each connection. The first chunk has `seq` 0. Each chunk
+  (also an ABORT chunk) adds 1, modulo 65536. The counter does not restart at a new message.
+- An **ABORT** chunk has flags `0x04` and an empty payload. A side sends it to tell the peer to close. It
+  matters most for a peripheral: iOS cannot drop a central. After an ABORT, the sender sends nothing more
+  and ignores writes.
+
+**Reassembly.** The receiver keeps `expectedSeq` (starts at 0) and a buffer. For each chunk it checks, in
+this order:
+
+| # | check | error code |
+|---|---|---|
+| 1 | length is at least 3 | `short_chunk` |
+| 2 | length is at most the receive limit (`maxChunk` of the receiver) | `too_large` |
+| 3 | bits 3-7 are 0, and ABORT is not set with FIRST, LAST or a payload | `bad_flags` |
+| 4 | `seq == expectedSeq` | `bad_seq` |
+| 5 | ABORT is not set | `abort` |
+| 6 | payload is not empty | `empty_chunk` |
+| 7 | FIRST is set exactly when the buffer is empty | `unexpected_first` (FIRST while a message is open) or `unexpected_continuation` (no FIRST while no message is open) |
+| 8 | the buffer, with this payload, is at most 1 MiB + 4 bytes | `message_too_big` |
+
+If a check fails, the receiver stops and closes the link. Else it adds the payload to the buffer and sets
+`expectedSeq = (seq + 1) mod 65536`. If LAST is set, the buffer is a complete message: the receiver
+passes it on and empties the buffer.
+
+After reassembly, the receiver checks a frame as in §8.1 step 9. A frame message whose size is not
+`4 + length` closes the session. A handshake record must be exactly 31 bytes.
+
+Vectors: `ble_chunk.json` (chunk lists for several chunk sizes, `seq` wrap, and one case for each error
+code).
+
+#### 10.2.5 Chunk size
+
+- `chunkSize` means the full ATT value: header and payload. It is at least **20**, at most **512**, and
+  for one link it is `max(20, min(512, ATT MTU − 3))`.
+- The sizes are **per direction**. The sender of a direction uses
+  `min(own limit, peer limit)`:
+
+| direction | own limit | peer limit |
+|---|---|---|
+| central → peripheral (`rx`) | iOS: `maximumWriteValueLength(for: .withResponse)`. Android: `negotiatedMtu − 3`. | `info.maxChunk` of the peripheral |
+| peripheral → central (`tx`) | iOS: `central.maximumUpdateValueLength`. Android: `serverMtu − 3`. | `hello.maxChunk` of the central |
+
+- The peripheral sets `info.maxChunk` to the largest chunk it accepts on `rx`. The central sets
+  `hello.maxChunk` to the largest chunk it accepts on `tx`. LAN sets `hello.maxChunk` to `0`.
+- Until the peripheral has read the `hello` of the central, it uses chunk size **20** on `tx`. The
+  peripheral record is the only message this affects. Both sides use their `chunkSize` from then on.
+- A receiver closes the link when a chunk is longer than its own limit (`too_large`).
+
+#### 10.2.6 Flow control
+
+- The central writes the next chunk only after the write response of the last one.
+- The peripheral sends the next notification only after the platform says it can. On iOS that is when
+  `updateValue` returns true, or after `peripheralManagerIsReady(toUpdateSubscribers:)`. On Android it
+  is after `onNotificationSent`.
+- A side sends the chunks of one message without another message in between.
+- Both directions run at the same time. The sender never waits for the peer to read a message.
+
+#### 10.2.7 Timeouts and close
+
+| event | limit | action |
+|---|---|---|
+| connect | 10 s | disconnect |
+| setup steps 2 to 5 | 10 s in all | disconnect |
+| responder record, after the central wrote its record | 10 s | central disconnects |
+| `hello` of the peer, after both records | 15 s | close |
+| no chunk received while the session is open | 30 s | close |
+| unfinished message (a chunk with FIRST and no LAST) | 15 s | close |
+| whole session | 10 min | close |
+| a pair finishes a session | wait 30 s before the next one with that peer | |
+
+- **Close** means: the central disconnects the GATT link. A peripheral cannot always disconnect. It sends
+  an ABORT chunk (best effort), sends nothing more, ignores writes, and waits for the central to
+  disconnect.
+- Every error in §10.2.4 and every protocol error in §10.1.4 closes the session.
+- When both `done` messages are sent and received, the central disconnects (§8.3 step 6).
+- A central that is not sure if the peripheral still lives (a write fails or times out) disconnects and
+  starts again later. No data is lost: the next session sends what is missing.
+- The sync screen keeps the screen on (`docs/PLAN.md` §9.3). iOS advertises only in the foreground.
+
+### 10.3 Privacy
+
+The discovery tag (§8.1) is a stable identifier of the group. Anyone on the same network, or in BLE
+range, can read it in the DNS-SD TXT record (§10.1.1) and in the `info` characteristic (§10.2.2). An
+observer can use it to link the devices of one group across places and time. The tag reveals nothing
+about the content of the group: it does not give the key, the name or the ops. Version 1 keeps the
+static tag. Rotating tags are listed in `docs/PLAN.md` §16.

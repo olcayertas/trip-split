@@ -9,6 +9,7 @@ Run:  python3 protocol/reference/gen_vectors.py          (writes the files)
 from __future__ import annotations
 
 import json
+import struct
 import sys
 
 import tripsplit_ref as ref
@@ -422,6 +423,99 @@ def received_op_cases():
             "group": GROUP, "cases": out}
 
 
+def ble_chunk_cases():
+    import hashlib
+    key = bytes(range(32))
+    record = wire.handshake_record(bytes(range(16, 32)), wire.discovery_tag(key))
+    session_key, _ = wire.session_key(key, GROUP, bytes(16), bytes([1] * 16))
+    frame = wire.seal(session_key, 0x01, 0, ref.canonical_bytes({"t": "done", "vector": {DEV_A: 3}}))
+
+    def filler(n):  # fixed pseudo-random bytes
+        out, i = b"", 0
+        while len(out) < n:
+            out += hashlib.sha256(b"ble-chunk/%d" % i).digest()
+            i += 1
+        return out[:n]
+
+    messages = {"record": record, "smallFrame": frame, "bigFrame": struct.pack(">I", 1196) + filler(1196)}
+    sizes = []
+    for mtu in (23, 185, 517, 10):
+        sizes.append({"mtu": mtu, "chunkSize": wire.chunk_size_for_mtu(mtu)})
+    cases = []
+    for size in (20, 23, 185, 512):
+        for name, msg in messages.items():
+            chunks = wire.chunk_message(msg, size)
+            r = wire.Reassembler(size)
+            out = [r.feed(c) for c in chunks]
+            assert out[-1] == msg and all(x is None for x in out[:-1])
+            cases.append({"name": name, "chunkSize": size, "message": msg.hex(), "firstSeq": 0,
+                          "chunks": [c.hex() for c in chunks]})
+    exact = filler(17 * 2)  # fills two chunks of 20 exactly
+    one = filler(17)        # fills one chunk of 20 exactly
+    for name, msg, count in (("exactlyOneChunk", one, 1), ("exactlyTwoChunks", exact, 2), ("onePlusOneByte", filler(18), 2)):
+        chunks = wire.chunk_message(msg, 20)
+        assert len(chunks) == count
+        cases.append({"name": name, "chunkSize": 20, "message": msg.hex(), "firstSeq": 0,
+                      "chunks": [c.hex() for c in chunks]})
+    wrap = wire.chunk_message(filler(100), 20, first_seq=65533)
+    cases.append({"name": "seqWraps", "chunkSize": 20, "message": filler(100).hex(), "firstSeq": 65533,
+                  "chunks": [c.hex() for c in wrap]})
+
+    def c(flags, seq, payload=b""):
+        return (bytes([flags]) + struct.pack(">H", seq) + payload).hex()
+
+    p = b"\x01\x02\x03"
+    errors = [
+        ("short_chunk", 20, [c(3, 0, p)[:4]]),
+        ("too_large", 20, [c(3, 0, filler(18))]),
+        ("bad_flags", 20, [c(0x0B, 0, p)]),
+        ("bad_flags", 20, [c(0x04 | 0x01, 0, b"")]),
+        ("bad_flags", 20, [c(0x04, 0, p)]),
+        ("bad_seq", 20, [c(1, 0, p), c(2, 2, p)]),
+        ("bad_seq", 20, [c(3, 1, p)]),
+        ("abort", 20, [c(1, 0, p), c(4, 1)]),
+        ("empty_chunk", 20, [c(3, 0, b"")]),
+        ("unexpected_first", 20, [c(1, 0, p), c(1, 1, p)]),
+        ("unexpected_continuation", 20, [c(2, 0, p)]),
+        ("unexpected_continuation", 20, [c(3, 0, p), c(0, 1, p)]),
+        ("message_too_big", 512, None),
+    ]
+    out = []
+    for code_, limit, chunks in errors:
+        if chunks is None:  # build chunks that pass the 1 MiB + 4 limit
+            room = 512 - 3
+            n = wire.MAX_MESSAGE // room + 1
+            chunks = []
+            for i in range(n):
+                flags = 1 if i == 0 else 0
+                chunks.append(c(flags, i, b"\x00" * room))
+            chunks = chunks[:n]
+        r = wire.Reassembler(limit)
+        got, at = None, None
+        for i, ch in enumerate(chunks):
+            try:
+                r.feed(bytes.fromhex(ch))
+            except wire.ReassemblyError as e:
+                got, at = e.code, i
+                break
+        assert got == code_, (code_, got)
+        entry = {"error": code_, "receiveLimit": limit, "atChunk": at}
+        if len(chunks) > 8:  # the long case: describe it instead of listing 2,000 chunks
+            entry.update({"repeat": {"flags": 0, "payloadBytes": 509, "count": len(chunks), "firstFlags": 1}})
+        else:
+            entry["chunks"] = chunks
+        out.append(entry)
+    info = wire.info_value(DEV_A, 185, ["peripheral", "central"], [wire.discovery_tag(key)])
+    return {"description": "BLE GATT values and chunking (SPEC §10.2). 'chunkSizes' maps MTU to chunk size. "
+                           "'cases' split a message into chunks (header: flags u8, seq u16 big-endian). "
+                           "'errors' feed chunks to a fresh receiver; it must fail at 'atChunk' with 'error'. "
+                           "A 'repeat' entry stands for 'count' chunks: the first has flags 'firstFlags', "
+                           "the others flags 'flags', all with 'payloadBytes' zero bytes and seq 0,1,2...",
+            "uuids": {"service": wire.SERVICE_UUID, "rx": wire.RX_UUID, "tx": wire.TX_UUID, "info": wire.INFO_UUID},
+            "chunkSizes": sizes, "info": {"deviceId": DEV_A, "hex": info.hex(), "text": info.decode()},
+            "cases": cases, "errors": out}
+
+
 FILES = {
     "canonical_json.json": canonical_cases,
     "currencies.json": currency_table,
@@ -434,6 +528,7 @@ FILES = {
     "crypto.json": crypto_cases,
     "invite.json": invite_cases,
     "received_op.json": received_op_cases,
+    "ble_chunk.json": ble_chunk_cases,
 }
 
 
