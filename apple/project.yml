@@ -1,0 +1,72 @@
+name: TripSplit
+options:
+  bundleIdPrefix: com.olcayertas
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: SNZ29V4PJZ
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  Core:
+    path: Core
+  Store:
+    path: Store
+  Net:
+    path: Net
+targets:
+  TripSplit:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    dependencies:
+      - package: Core
+        product: TripSplitCore
+      - package: Store
+        product: TripSplitStore
+      - package: Net
+        product: TripSplitNet
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.olcayertas.TripSplit
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SWIFT_EMIT_LOC_STRINGS: YES
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: TripSplit
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, tr]
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+        NSLocalNetworkUsageDescription: TripSplit finds the other phones of your group on the same Wi-Fi network and syncs the group with them.
+        NSBonjourServices: [_tripsplit._tcp]
+  TripSplitUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: TripSplit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.olcayertas.TripSplitUITests
+        TEST_TARGET_NAME: TripSplit
+schemes:
+  TripSplit:
+    build:
+      targets:
+        TripSplit: all
+    test:
+      targets:
+        - TripSplitUITests
