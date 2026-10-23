@@ -591,7 +591,7 @@ struct NewcomerTests {
         let plan = newcomerEdits(memberId: c, state: state())
         // E1 (equal) and E2 (weights) change. E3 (exact) is listed. E4 already has C. E5 is deleted.
         #expect(plan.edits.count == 2)
-        #expect(plan.exactExpenses.map(\.title) == ["E3"])
+        #expect(plan.untouched.map(\.title) == ["E3"])
         for edit in plan.edits {
             #expect(isValidBody(type: "expense.edit", body: edit["fields"] == nil ? .null : edit))
         }
@@ -603,8 +603,29 @@ struct NewcomerTests {
         #expect(weights["fields"]?["money"]?["split"]?["weights"]?[c] == .int(1))
     }
 
+    @Test func fullSplitsAreListedNotSkipped() {
+        // 100 members in an equal split and in a weights split: the newcomer does not fit.
+        var w = Writer(device: "aaaaaaaa-0000-4000-8000-000000000001")
+        let many = (0..<100).map { String(format: "40000000-0000-4000-8000-%012d", $0) }
+        func expense(_ n: Int, _ split: JSONValue) -> JSONValue {
+            w.op(type: "expense.add", body: .object([
+                "expenseId": .string("e0000000-0000-4000-8000-00000000000\(n)"), "title": .string("Full\(n)"), "date": .string("2026-10-20"),
+                "category": .string("food"), "paidBy": .string(many[0]),
+                "money": .object(["amountMinor": .int(10_000), "currency": .string("EUR"), "rate": .string("1"), "split": split])]), wall: 2_000 + Int64(n))
+        }
+        var ops: [JSONValue] = [w.op(type: "group.create", body: .object([
+            "name": .string("T"), "baseCurrency": .string("EUR"), "creatorMemberId": .string(many[0]), "creatorName": .string("A")]), wall: 1_000)]
+        for m in many.dropFirst() { ops.append(w.op(type: "member.add", body: .object(["memberId": .string(m), "name": .string("M")]), wall: 1_001)) }
+        ops.append(expense(1, .object(["mode": .string("equal"), "members": .array(many.map { .string($0) })])))
+        ops.append(expense(2, .object(["mode": .string("weights"), "weights": .object(Dictionary(uniqueKeysWithValues: many.map { ($0, JSONValue.int(1)) }))])))
+        let state = GroupState(foldResult: fold(groupId: groupId, ops: ops))
+        let plan = newcomerEdits(memberId: "50000000-0000-4000-8000-000000000001", state: state)
+        #expect(plan.edits.isEmpty)
+        #expect(plan.untouched.map(\.title).sorted() == ["Full1", "Full2"])
+    }
+
     @Test func nothingToDoWhenAlreadyIn() {
         let plan = newcomerEdits(memberId: a, state: state())
-        #expect(plan.edits.isEmpty && plan.exactExpenses.isEmpty)
+        #expect(plan.edits.isEmpty && plan.untouched.isEmpty)
     }
 }
