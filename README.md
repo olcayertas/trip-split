@@ -69,9 +69,9 @@ no account. The phones in the group talk to each other directly.
 
 ```mermaid
 flowchart LR
-    A["📱 Ayşe<br/>adds 'Breakfast'"] -- "Wi-Fi or Bluetooth<br/>🔒 encrypted" --> B["📱 Ali"]
-    B -- "🔒" --> C["📱 Mehmet<br/>joins on day 3"]
-    A -. "🔒" .-> C
+    A["Ayşe's phone<br/>adds 'Breakfast'"] -- "Wi-Fi or Bluetooth<br/>encrypted" --> B["Ali's phone"]
+    B -- "encrypted" --> C["Mehmet's phone<br/>joins on day 3"]
+    A -. "encrypted" .-> C
 ```
 
 - **No server, so no single truth.** Each phone keeps an append-only log of changes. When two phones
