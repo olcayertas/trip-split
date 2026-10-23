@@ -179,5 +179,5 @@ The workflow `.github/workflows/pages.yml` publishes `docs/privacy/` when a chan
 ## Known traps
 
 - `gym` passes `xcargs` to the export step too. The `beta` lane sends only `-allowProvisioningUpdates` to the export. Check the export step on the first real run.
-- `latest_testflight_build_number` fails when the app record has no build. Upload the first build by hand with build number 1, or set the number in the lane for the first run.
+- `latest_testflight_build_number` needs the app record. Make the record first, or the lane fails.
 - A key with a role lower than App Manager cannot make signing assets. Make the key again with the correct role.
