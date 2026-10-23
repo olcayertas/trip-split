@@ -1,0 +1,172 @@
+{
+  "description": "Rate parsing and conversion to base minor units, round half even (SPEC §5). `mantissa` is a decimal string because it can exceed 2^53.",
+  "convert": [
+    {
+      "amountMinor": 1000,
+      "currency": "EUR",
+      "rate": "34.75",
+      "base": "TRY",
+      "baseMinor": 34750
+    },
+    {
+      "amountMinor": 1500,
+      "currency": "JPY",
+      "rate": "0.0061",
+      "base": "EUR",
+      "baseMinor": 915
+    },
+    {
+      "amountMinor": 1234,
+      "currency": "KWD",
+      "rate": "3.05",
+      "base": "EUR",
+      "baseMinor": 376
+    },
+    {
+      "amountMinor": 1999,
+      "currency": "EUR",
+      "rate": "0.33",
+      "base": "KWD",
+      "baseMinor": 6597
+    },
+    {
+      "amountMinor": 5,
+      "currency": "USD",
+      "rate": "0.5",
+      "base": "EUR",
+      "baseMinor": 2
+    },
+    {
+      "amountMinor": 15,
+      "currency": "USD",
+      "rate": "0.1",
+      "base": "EUR",
+      "baseMinor": 2
+    },
+    {
+      "amountMinor": 25,
+      "currency": "USD",
+      "rate": "0.1",
+      "base": "EUR",
+      "baseMinor": 2
+    },
+    {
+      "amountMinor": 35,
+      "currency": "USD",
+      "rate": "0.1",
+      "base": "EUR",
+      "baseMinor": 4
+    },
+    {
+      "amountMinor": 12345,
+      "currency": "EUR",
+      "rate": "1",
+      "base": "EUR",
+      "baseMinor": 12345
+    },
+    {
+      "amountMinor": 100,
+      "currency": "EUR",
+      "rate": "150.5",
+      "base": "JPY",
+      "baseMinor": 150
+    },
+    {
+      "amountMinor": 1,
+      "currency": "JPY",
+      "rate": "0.00000001",
+      "base": "EUR",
+      "baseMinor": 0
+    },
+    {
+      "amountMinor": 999999999999,
+      "currency": "EUR",
+      "rate": "999999999.99999999",
+      "base": "KWD",
+      "error": "outOfRange"
+    },
+    {
+      "amountMinor": 1000000,
+      "currency": "EUR",
+      "rate": "1000",
+      "base": "JPY",
+      "baseMinor": 10000000
+    }
+  ],
+  "rates": [
+    {
+      "rate": "1",
+      "valid": true,
+      "mantissa": "1",
+      "scale": 0
+    },
+    {
+      "rate": "34.75",
+      "valid": true,
+      "mantissa": "3475",
+      "scale": 2
+    },
+    {
+      "rate": "0.0061",
+      "valid": true,
+      "mantissa": "61",
+      "scale": 4
+    },
+    {
+      "rate": "01.5",
+      "valid": true,
+      "mantissa": "15",
+      "scale": 1
+    },
+    {
+      "rate": "999999999.99999999",
+      "valid": true,
+      "mantissa": "99999999999999999",
+      "scale": 8
+    },
+    {
+      "rate": "0",
+      "valid": false
+    },
+    {
+      "rate": "0.0",
+      "valid": false
+    },
+    {
+      "rate": "1.",
+      "valid": false
+    },
+    {
+      "rate": ".5",
+      "valid": false
+    },
+    {
+      "rate": "-1",
+      "valid": false
+    },
+    {
+      "rate": "1e3",
+      "valid": false
+    },
+    {
+      "rate": "1.123456789",
+      "valid": false
+    },
+    {
+      "rate": "1234567890",
+      "valid": false
+    },
+    {
+      "rate": " 1",
+      "valid": false
+    },
+    {
+      "rate": "1,5",
+      "valid": false
+    },
+    {
+      "rate": "",
+      "valid": false
+    }
+  ]
+}
