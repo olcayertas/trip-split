@@ -168,7 +168,7 @@ struct RelaySyncTests {
         let result = try await sync(b, with: relay)
         #expect(result.received == 240)
         #expect(await b.relayState().cursor == 240)
-        #expect(await relay.pulls == 3)
+        #expect(await relay.pulls == 5)
         #expect(result.pushedOps == 0)
     }
 

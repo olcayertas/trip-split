@@ -77,16 +77,23 @@ public struct RelayResult: Equatable, Sendable {
 }
 
 public struct RelaySync: Sendable {
-    public static let pageLimit = 100
+    /// The default page size of SPEC §10.4.3.
+    public static let defaultPageLimit = 50
 
     public let groupId: String
     public let groupKey: [UInt8]
     public let store: any RelayStore
     public let api: any RelayAPI
     public let now: @Sendable () -> Int64
+    public let pageLimit: Int
+    /// A fixed nonce for the vector tests. Nil means a random nonce.
+    public let nonce: (@Sendable () -> [UInt8])?
 
     public init(groupId: String, groupKey: [UInt8], store: any RelayStore, api: any RelayAPI,
-                now: @escaping @Sendable () -> Int64 = { 0 }) {
+                now: @escaping @Sendable () -> Int64 = { 0 }, pageLimit: Int = RelaySync.defaultPageLimit,
+                nonce: (@Sendable () -> [UInt8])? = nil) {
+        self.pageLimit = pageLimit
+        self.nonce = nonce
         self.groupId = groupId
         self.groupKey = groupKey
         self.store = store
@@ -106,7 +113,7 @@ public struct RelaySync: Sendable {
 
     private func pull(_ state: inout RelayState, _ result: inout RelayResult, mailbox: String, key: [UInt8]) async throws {
         while true {
-            let page = try await api.pull(after: state.cursor, limit: Self.pageLimit)
+            let page = try await api.pull(after: state.cursor, limit: pageLimit)
             var accepted: [JSONValue] = []
             var next = state
             for batch in page.batches {
@@ -149,7 +156,7 @@ public struct RelaySync: Sendable {
     private func push(_ state: inout RelayState, _ result: inout RelayResult, mailbox: String, key: [UInt8]) async throws {
         let missing = try await store.opsMissing(for: state.vector)
         for batch in RelayCrypto.batches(of: missing) {
-            let blob = try RelayCrypto.seal(ops: batch, batchKey: key, mailboxId: mailbox)
+            let blob = try RelayCrypto.seal(ops: batch, batchKey: key, mailboxId: mailbox, nonce: nonce?())
             _ = try await api.push(blob)
             state.add(batch)
             try await store.saveRelayState(state)
