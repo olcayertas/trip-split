@@ -76,15 +76,17 @@ public struct RelayHTTPClient: RelayAPI {
             guard let cursor = entry["cursor"]?.intValue else { throw RelayError.retryLater }
             batches.append(.init(cursor: cursor, blob: entry["blob"]?.stringValue.flatMap(Base64URL.decode) ?? []))
         }
-        return RelayPage(batches: batches, more: more)
+        // `epoch` is a string, or null for a mailbox that does not exist.
+        return RelayPage(batches: batches, more: more, epoch: json["epoch"]?.stringValue)
     }
 
-    public func push(_ blob: [UInt8]) async throws -> Int64 {
+    public func push(_ blob: [UInt8]) async throws -> RelayPushAck {
         var req = request("batches", method: "POST")
         req.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
         let (data, code) = try await send(req, body: Data(blob))
         if let failure = Self.error(forStatus: code, expected: 201) { throw failure }
-        guard let cursor = (try? JSONParser.parse(Array(data)))?["cursor"]?.intValue else { throw RelayError.retryLater }
-        return cursor
+        let json = try? JSONParser.parse(Array(data))
+        guard let cursor = json?["cursor"]?.intValue else { throw RelayError.retryLater }
+        return RelayPushAck(cursor: cursor, epoch: json?["epoch"]?.stringValue)
     }
 }

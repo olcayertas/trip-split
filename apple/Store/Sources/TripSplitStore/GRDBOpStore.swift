@@ -72,12 +72,12 @@ public struct GRDBOpStore: RelayStore {
     public func relayState() async throws -> RelayState {
         let groupId = groupId
         return try await pool.read { db in
-            guard let row = try Row.fetchOne(db, sql: "SELECT relay_cursor, relay_vector FROM groups WHERE group_id = ?",
+            guard let row = try Row.fetchOne(db, sql: "SELECT relay_epoch, relay_cursor, relay_vector FROM groups WHERE group_id = ?",
                                              arguments: [groupId])
             else { throw StoreError.unknownGroup }
             let vector = (try? JSONParser.parse(row["relay_vector"] as String))?.objectValue?
                 .compactMapValues { $0.intValue } ?? [:]
-            return RelayState(cursor: row["relay_cursor"], vector: vector)
+            return RelayState(epoch: row["relay_epoch"], cursor: row["relay_cursor"], vector: vector)
         }
     }
 
@@ -88,8 +88,8 @@ public struct GRDBOpStore: RelayStore {
 
     static func saveRelay(_ db: Database, groupId: String, _ state: RelayState) throws {
         let vector = JSONValue.object(state.vector.mapValues { .int($0) }).canonical
-        try db.execute(sql: "UPDATE groups SET relay_cursor = ?, relay_vector = ? WHERE group_id = ?",
-                       arguments: [state.cursor, vector, groupId])
+        try db.execute(sql: "UPDATE groups SET relay_epoch = ?, relay_cursor = ?, relay_vector = ? WHERE group_id = ?",
+                       arguments: [state.epoch, state.cursor, vector, groupId])
     }
 
     static func store(_ db: Database, groupId: String, ops: [JSONValue], wallMillis: Int64) throws -> ReceiveSummary {
