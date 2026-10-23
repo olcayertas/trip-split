@@ -303,8 +303,8 @@ struct SessionTests {
                                     options: options(deviceId(1)))
         let other = SyncGroup(groupId: groupId, groupKey: groupKey.map { $0 ^ 1 }, store: b)
         let responder = SyncSession(role: .responder, link: lb, groups: [other], options: options(deviceId(2)))
-        async let r1: Result<SessionResult, Error> = Result { try await initiator.run() }
-        async let r2: Result<SessionResult, Error> = Result { try await responder.run() }
+        async let r1 = capture { try await initiator.run() }
+        async let r2 = capture { try await responder.run() }
         let (x, y) = await (r1, r2)
         #expect((y.failure as? SessionError) == .unknownGroup)
         #expect(x.failure != nil)
@@ -324,8 +324,8 @@ struct SessionTests {
                                     options: options(deviceId(1)))
         let responder = SyncSession(role: .responder, link: lb, groups: [SyncGroup(groupId: groupId, groupKey: groupKey, store: b)],
                                     options: options(deviceId(2)))
-        async let r1: Result<SessionResult, Error> = Result { try await initiator.run() }
-        async let r2: Result<SessionResult, Error> = Result { try await responder.run() }
+        async let r1 = capture { try await initiator.run() }
+        async let r2 = capture { try await responder.run() }
         let (_, y) = await (r1, r2)
         #expect((y.failure as? SessionError) == .hashMismatch)
         #expect(await b.allOps.isEmpty)
@@ -389,6 +389,11 @@ struct SessionTests {
         for s in stores.dropFirst() { #expect(await s.fold() == expected) }
         #expect(await stores[0].allOps.count == total)
     }
+}
+
+/// Runs an async closure and keeps its result. (`Result(catching:)` has no async form on older compilers.)
+func capture<T: Sendable>(_ body: @Sendable () async throws -> T) async -> Result<T, Error> {
+    do { return .success(try await body()) } catch { return .failure(error) }
 }
 
 extension Result {
