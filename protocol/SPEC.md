@@ -589,6 +589,17 @@ The base URL is fixed in the app build. Each request sends `Authorization: Beare
   the mailbox is full (§10.4.5), `429` for too many requests. The client tries again later on `429`,
   `5xx` and network errors, with a back-off from 5 s up to 5 min.
 
+Details that the rules above leave open (the reference relay and `relay.json` fix them):
+
+- The relay stores `SHA-256` of the 64 ASCII characters of `relayToken`, as lowercase hex.
+- A request with no token, or a token that is not 64 lowercase hex characters, gets `403`. A `GET` on an
+  unknown mailbox is the one exception: it gets `200` with no batches, with any token.
+- Order of checks for `POST`: mailbox id (`400`), token (`403`), body size (`413`), empty body (`400`),
+  mailbox full (`507`). The relay creates a mailbox only when it stores a blob.
+- A `limit` or `after` that is not a plain non-negative integer gets `400`. `limit` is 1–100.
+- `more` is true when the mailbox holds a blob after the last blob of the page.
+- `Content-Length` over 320 KiB gets `413` before the relay reads the body.
+
 #### 10.4.4 Sync with the relay
 
 The client keeps, for each group, `relayCursor` (the highest cursor it has read, starts at 0) and
