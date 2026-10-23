@@ -82,6 +82,13 @@ public struct AppDatabase: Sendable {
                 t.primaryKey(["group_id", "author", "seq", "foreign_hash"])
             }
         }
+        // Phase 10: the relay cursor and vector of each group (SPEC §10.4.4). The vector is canonical JSON.
+        m.registerMigration("v2-relay") { db in
+            try db.alter(table: "groups") { t in
+                t.add(column: "relay_cursor", .integer).notNull().defaults(to: 0)
+                t.add(column: "relay_vector", .text).notNull().defaults(to: "{}")
+            }
+        }
         return m
     }
 }

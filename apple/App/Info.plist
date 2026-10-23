@@ -48,6 +48,8 @@
 	<string>TripSplit uses the camera to scan the QR code of a group invite.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>TripSplit finds the other phones of your group on the same Wi-Fi network and syncs the group with them.</string>
+	<key>RelayBaseURL</key>
+	<string>$(RELAY_BASE_URL)</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

@@ -1,0 +1,149 @@
+import CryptoKit
+import Foundation
+import Testing
+@testable import TripSplitCore
+
+private func relayVector() throws -> JSONValue {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() }
+    return try JSONParser.parse(try Data(contentsOf: url.appending(path: "protocol/vectors/relay.json")))
+}
+
+private func hexBytes(_ v: JSONValue?) -> [UInt8] { Hex.decode(v?.stringValue ?? "")! }
+
+/// Counts the POSTs of a scenario. The k-th POST uses the nonce k: 8 zero bytes, then k as u32 big-endian.
+private final class NonceCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count: UInt32 = 0
+
+    func next() -> [UInt8] {
+        let k = lock.withLock { count += 1; return count }
+        return [UInt8](repeating: 0, count: 8) + [UInt8(k >> 24 & 255), UInt8(k >> 16 & 255), UInt8(k >> 8 & 255), UInt8(k & 255)]
+    }
+}
+
+/// Wraps a relay and writes down each request in the form of the vector file.
+private final class Recorder: RelayAPI, @unchecked Sendable {
+    private let inner: InMemoryRelayClient
+    private let lock = NSLock()
+    private var log: [JSONValue] = []
+
+    init(_ inner: InMemoryRelayClient) { self.inner = inner }
+
+    var requests: [JSONValue] { lock.withLock { log } }
+
+    func pull(after cursor: Int64, limit: Int) async throws -> RelayPage {
+        let page = try await inner.pull(after: cursor, limit: limit)
+        let batches: [JSONValue] = page.batches.map { .object(["cursor": .int($0.cursor), "blob": .string(Base64URL.encode($0.blob))]) }
+        add(.object([
+            "method": .string("GET"),
+            "path": .string("/v1/m/\(inner.mailbox)/batches?after=\(cursor)&limit=\(limit)"),
+            "status": .int(200),
+            "response": .object(["batches": .array(batches), "more": .bool(page.more)]),
+        ]))
+        return page
+    }
+
+    func push(_ blob: [UInt8]) async throws -> Int64 {
+        let cursor = try await inner.push(blob)
+        add(.object([
+            "method": .string("POST"),
+            "path": .string("/v1/m/\(inner.mailbox)/batches"),
+            "status": .int(201),
+            "bodyHex": .string(Hex.encode(blob)),
+            "response": .object(["cursor": .int(cursor)]),
+        ]))
+        return cursor
+    }
+
+    private func add(_ entry: JSONValue) { lock.withLock { log.append(entry) } }
+}
+
+@Suite("Relay vectors")
+struct RelayVectorTests {
+    @Test func namesAndKeys() throws {
+        let v = try relayVector()
+        let key = hexBytes(v["groupKeyHex"])
+        let group = try #require(v["group"]?.stringValue)
+        #expect(RelayCrypto.mailboxId(groupKey: key) == v["mailboxId"]?.stringValue)
+        let token = RelayCrypto.relayToken(groupKey: key)
+        #expect(token == v["token"]?.stringValue)
+        #expect(Hex.encode(SHA256.hash(data: Array(token.utf8))) == v["tokenHashHex"]?.stringValue)
+        #expect(RelayCrypto.batchKey(groupKey: key, groupId: group) == hexBytes(v["batchKeyHex"]))
+    }
+
+    @Test func sealGivesTheSameBytesAndOpenReturnsTheOps() throws {
+        let v = try relayVector()
+        let key = RelayCrypto.batchKey(groupKey: hexBytes(v["groupKeyHex"]), groupId: v["group"]!.stringValue!)
+        let mailbox = v["mailboxId"]!.stringValue!
+        let all = v["ops"]!.arrayValue!
+        func op(_ ref: String) throws -> JSONValue {
+            try #require(all.first { "\($0["author"]!.stringValue!):\($0["seq"]!.intValue!)" == ref })
+        }
+        for blob in v["blobs"]!.arrayValue! {
+            let ops = try blob["opRefs"]!.arrayValue!.map { try op($0.stringValue!) }
+            #expect(Array(RelayCrypto.plaintext(ops: ops)) == Array(blob["plaintext"]!.stringValue!.utf8))
+            let sealed = try RelayCrypto.seal(ops: ops, batchKey: key, mailboxId: mailbox, nonce: hexBytes(blob["nonceHex"]))
+            #expect(sealed == hexBytes(blob["blobHex"]))
+            #expect(RelayCrypto.open(blob: sealed, batchKey: key, mailboxId: mailbox) == ops)
+        }
+    }
+
+    @Test func tamperedAndWrongAadBlobsDoNotOpen() throws {
+        let v = try relayVector()
+        let key = RelayCrypto.batchKey(groupKey: hexBytes(v["groupKeyHex"]), groupId: v["group"]!.stringValue!)
+        let mailbox = v["mailboxId"]!.stringValue!
+        #expect(RelayCrypto.open(blob: hexBytes(v["blobs"]!.arrayValue![0]["blobHex"]), batchKey: key, mailboxId: mailbox) != nil)
+        #expect(RelayCrypto.open(blob: hexBytes(v["tamperedBlobHex"]), batchKey: key, mailboxId: mailbox) == nil)
+        let wrong = try #require(v["wrongAadMailboxId"]?.stringValue)
+        #expect(RelayCrypto.open(blob: hexBytes(v["wrongAadBlobHex"]), batchKey: key, mailboxId: mailbox) == nil)
+        // The blob is good for the mailbox that it was sealed for.
+        #expect(RelayCrypto.open(blob: hexBytes(v["wrongAadBlobHex"]), batchKey: key, mailboxId: wrong) != nil)
+    }
+
+    @Test func scenarioRequestsMatchInOrder() async throws {
+        let v = try relayVector()
+        let key = hexBytes(v["groupKeyHex"])
+        let group = v["group"]!.stringValue!
+        let scenario = try #require(v["scenario"])
+        #expect(scenario["authorization"]?.stringValue == "Bearer " + RelayCrypto.relayToken(groupKey: key))
+
+        let all = v["ops"]!.arrayValue!
+        func held(_ refs: [JSONValue]) -> [JSONValue] {
+            let wanted = Set(refs.compactMap(\.stringValue))
+            return all.filter { wanted.contains("\($0["author"]!.stringValue!):\($0["seq"]!.intValue!)") }
+        }
+        let relay = InMemoryRelay()
+        let nonces = NonceCounter()
+        var stores: [String: InMemoryOpStore] = [:]
+        for (name, refs) in scenario["initialHeld"]!.objectValue! {
+            let store = InMemoryOpStore(groupId: group, deviceId: "dddddddd-0000-4000-8000-00000000000\(name == "A" ? 1 : name == "B" ? 2 : 3)")
+            for op in held(refs.arrayValue!) { await store.insertLocal(op) }
+            stores[name] = store
+        }
+
+        for step in scenario["steps"]!.arrayValue! {
+            let name = step["device"]!.stringValue!
+            let store = try #require(stores[name])
+            #expect(await store.allOps.count == Int(step["heldBefore"]!.intValue!), "\(name) before")
+            let recorder = Recorder(InMemoryRelayClient(relay, groupKey: key))
+            let result = try await RelaySync(groupId: group, groupKey: key, store: store, api: recorder,
+                                             pageLimit: Int(step["pageLimit"]!.intValue!), nonce: { nonces.next() }).run()
+            #expect(JSONValue.array(recorder.requests) == step["requests"], "\(name) requests")
+            #expect(result.received == Int(step["stored"]!.intValue!))
+            #expect(result.pushedOps == Int(step["sent"]!.intValue!))
+            let state = await store.relayState()
+            #expect(state.cursor == step["relayCursor"]!.intValue!)
+            #expect(JSONValue.object(state.vector.mapValues { .int($0) }) == step["relayVector"])
+            #expect(await store.allOps.count == Int(step["heldAfter"]!.intValue!), "\(name) after")
+        }
+
+        let refs = Set(scenario["endOpRefs"]!.arrayValue!.compactMap(\.stringValue))
+        for (name, store) in stores {
+            let ops = await store.allOps
+            #expect(Set(ops.map { "\($0["author"]!.stringValue!):\($0["seq"]!.intValue!)" }) == refs, "\(name) end")
+            let balances = fold(groupId: group, ops: ops)["balances"]
+            #expect(balances == scenario["endFoldBalances"], "\(name) balances")
+        }
+    }
+}

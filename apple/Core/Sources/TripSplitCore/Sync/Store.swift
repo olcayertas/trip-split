@@ -38,6 +38,7 @@ public actor InMemoryOpStore: OpStore {
     private var ops: [String: JSONValue] = [:]
     private var clock: HLC
     public private(set) var forks: [ForkRecord] = []
+    public private(set) var relay = RelayState()
 
     public init(groupId: String, deviceId: String) {
         self.groupId = groupId
@@ -83,4 +84,16 @@ public actor InMemoryOpStore: OpStore {
     public func insertLocal(_ op: JSONValue) { ops[opRef(op)] = op }
 
     public func fold() -> JSONValue { TripSplitCore.fold(groupId: groupId, ops: allOps) }
+}
+
+extension InMemoryOpStore: RelayStore {
+    public func relayState() -> RelayState { relay }
+
+    public func receive(_ incoming: [JSONValue], wallMillis: Int64, relay state: RelayState) -> ReceiveSummary {
+        let summary = receive(incoming, wallMillis: wallMillis)
+        relay = state
+        return summary
+    }
+
+    public func saveRelayState(_ state: RelayState) { relay = state }
 }

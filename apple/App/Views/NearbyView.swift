@@ -12,6 +12,7 @@ struct NearbyView: View {
 
     var body: some View {
         List {
+            if let relay = model.relay { internetSection(relay) }
             if let coordinator = model.coordinator {
                 content(coordinator)
             }
@@ -38,6 +39,35 @@ struct NearbyView: View {
                     await coordinator.stop()
                 }
             }
+        }
+    }
+
+    /// The per-device switch of the internet relay (PLAN §9.4). The line below it says what the relay sees.
+    @ViewBuilder
+    private func internetSection(_ relay: RelayCoordinator) -> some View {
+        Section("Internet") {
+            Toggle(isOn: Binding(get: { relay.isEnabled && relay.isConfigured }, set: { relay.setEnabled($0) })) {
+                VStack(alignment: .leading, spacing: M3Spacing.xxs) {
+                    Text("Sync over the internet").m3(M3Type.bodyLarge).foregroundStyle(M3Color.onSurface)
+                    if let line = relayLine(relay) {
+                        Text(line).m3(M3Type.bodySmall).foregroundStyle(M3Color.onSurfaceVariant)
+                    }
+                }
+            }
+            .disabled(!relay.isConfigured)
+            .accessibilityIdentifier("relaySwitch")
+            .m3Row()
+            Text("The relay server sees your IP address and the time of each sync. It cannot read your group.")
+                .m3(M3Type.bodySmall).foregroundStyle(M3Color.onSurfaceVariant).m3Row()
+        }
+    }
+
+    private func relayLine(_ relay: RelayCoordinator) -> String? {
+        switch relay.status {
+        case .notSetUp: String(localized: "Not set up yet")
+        case let .done(date, _, _): String(localized: "Synced over the internet at \(date.formatted(date: .omitted, time: .shortened))")
+        case let .waiting(until, _): String(localized: "Cannot reach the relay. Next try at \(until.formatted(date: .omitted, time: .shortened)).")
+        case .off, .idle, .syncing: nil
         }
     }
 

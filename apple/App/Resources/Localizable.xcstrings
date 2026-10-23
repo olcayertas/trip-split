@@ -421,6 +421,16 @@
         }
       }
     },
+    "Cannot reach the relay. Next try at %@.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktarıcıya ulaşılamıyor. Sonraki deneme: %@."
+          }
+        }
+      }
+    },
     "Choose at least one member.": {
       "localizations": {
         "tr": {
@@ -731,6 +741,16 @@
         }
       }
     },
+    "Internet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İnternet"
+          }
+        }
+      }
+    },
     "Invite": {
       "localizations": {
         "tr": {
@@ -987,6 +1007,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Şimdi değil"
+          }
+        }
+      }
+    },
+    "Not set up yet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz kurulmadı"
           }
         }
       }
@@ -1311,6 +1341,16 @@
         }
       }
     },
+    "Sync over the internet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İnternet üzerinden eşitle"
+          }
+        }
+      }
+    },
     "Sync works while this screen is open on both phones. Phones must be on the same Wi-Fi network or hotspot, or close to each other with Bluetooth. Some hotel networks block Wi-Fi sync. Then use a phone hotspot or Bluetooth.": {
       "localizations": {
         "tr": {
@@ -1327,6 +1367,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eşitlendi %1$@: %2$lld alındı, %3$lld gönderildi"
+          }
+        }
+      }
+    },
+    "Synced over the internet at %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İnternet üzerinden %@ saatinde eşitlendi"
           }
         }
       }
@@ -1387,6 +1437,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Harcama geçmişte kalır. Silinen harcama geri gelmez."
+          }
+        }
+      }
+    },
+    "The relay server sees your IP address and the time of each sync. It cannot read your group.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktarıcı sunucu IP adresinizi ve her eşitlemenin zamanını görür. Grubunuzu okuyamaz."
           }
         }
       }

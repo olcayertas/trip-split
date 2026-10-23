@@ -6,6 +6,7 @@ struct GroupView: View {
     let repository: GroupRepository
     let groupId: String
     var openNearby = false
+    @Environment(AppModel.self) private var model
     @State private var tab = Tab.expenses
     @State private var showNearby = false
     @State private var claiming = false
@@ -43,7 +44,10 @@ struct GroupView: View {
         } message: { id in
             Text(newcomerMessage(newcomerPlan(id)))
         }
-        .task { if openNearby { showNearby = true } }
+        .task {
+            if openNearby { showNearby = true }
+            model.relay?.trigger(groupId)
+        }
         // When the log arrives and this phone has no member yet, ask who the user is (once).
         .onChange(of: state.group?.name) {
             if state.group != nil, repository.myMember(in: groupId) == nil, !claimAsked {

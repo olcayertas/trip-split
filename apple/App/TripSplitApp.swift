@@ -24,6 +24,7 @@ final class AppModel {
     private(set) var repository: GroupRepository?
     private(set) var failure: String?
     private(set) var coordinator: SyncCoordinator?
+    private(set) var relay: RelayCoordinator?
     /// An invite from a `tripsplit://` link or a scan, waiting for the user to confirm.
     var pendingInvite: Invite?
 
@@ -48,6 +49,9 @@ final class AppModel {
             repo.start()
             repository = repo
             coordinator = SyncCoordinator(repository: repo, transports: [LANTransport(), BLETransport()])
+            // The relay URL comes from the build settings (`RELAY_BASE_URL`). The UI tests never use the network.
+            let relayURL = testing ? nil : RelayConfig.baseURL(Bundle.main.object(forInfoDictionaryKey: "RelayBaseURL") as? String)
+            relay = RelayCoordinator(repository: repo, baseURL: relayURL)
             #if DEBUG
             if args.contains("-seed-demo") || args.contains("-demo-fixed") {
                 let fixed = args.contains("-demo-fixed")
@@ -72,6 +76,7 @@ final class AppModel {
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -87,6 +92,7 @@ struct RootView: View {
             }
         }
         .background(M3Color.background)
+        .onChange(of: scenePhase, initial: true) { model.relay?.setActive(scenePhase == .active) }
         .onOpenURL { url in
             if let invite = Invite.parse(url.absoluteString) { model.pendingInvite = invite }
         }

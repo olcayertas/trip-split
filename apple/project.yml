@@ -13,6 +13,8 @@ settings:
     CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
+    # The internet relay (SPEC §10.4). With a host under .invalid the relay sync stays off.
+    RELAY_BASE_URL: https://relay.invalid
 packages:
   Core:
     path: Core
@@ -48,6 +50,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, tr]
+        RelayBaseURL: $(RELAY_BASE_URL)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false

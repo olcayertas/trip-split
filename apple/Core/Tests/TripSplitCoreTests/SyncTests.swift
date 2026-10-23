@@ -170,10 +170,10 @@ struct SeededRNG: RandomNumberGenerator {
     }
 }
 
-private let groupId = "00000000-0000-4000-8000-000000000001"
-private let groupKey = (0..<32).map { UInt8($0) }
+let groupId = "00000000-0000-4000-8000-000000000001"
+let groupKey = (0..<32).map { UInt8($0) }
 
-private func deviceId(_ n: Int) -> String { "dddddddd-0000-4000-8000-00000000000\(n)" }
+func deviceId(_ n: Int) -> String { "dddddddd-0000-4000-8000-00000000000\(n)" }
 
 private func options(_ device: String, admission: (any SessionAdmission)? = nil) -> SessionOptions {
     SessionOptions(deviceId: device, now: { 1_761_210_000_000 }, admission: admission, closeGraceSeconds: 1)
@@ -197,7 +197,7 @@ private func gossip(_ a: InMemoryOpStore, _ b: InMemoryOpStore, seed: UInt64,
 
 // MARK: - Op generation
 
-private struct Writer {
+struct Writer {
     let device: String
     var clock: HLC
     var seq: Int64 = 0
@@ -213,10 +213,10 @@ private struct Writer {
     }
 }
 
-private func memberId(_ n: Int) -> String { "10000000-0000-4000-8000-0000000000" + String(format: "%02d", n) }
+func memberId(_ n: Int) -> String { "10000000-0000-4000-8000-0000000000" + String(format: "%02d", n) }
 private func expenseId(_ d: Int, _ n: Int) -> String { "e0000000-0000-4000-8000-" + String(format: "%04d%08d", d, n) }
 
-private func randomOps(device: Int, count: Int, rng: inout SeededRNG) -> [JSONValue] {
+func randomOps(device: Int, count: Int, rng: inout SeededRNG) -> [JSONValue] {
     var w = Writer(device: deviceId(device))
     var out: [JSONValue] = []
     var wall: Int64 = 1_761_210_000_000
