@@ -51,6 +51,10 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSLocalNetworkUsageDescription: TripSplit finds the other phones of your group on the same Wi-Fi network and syncs the group with them.
         NSBonjourServices: [_tripsplit._tcp]
+        NSCameraUsageDescription: TripSplit uses the camera to scan the QR code of a group invite.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.olcayertas.TripSplit
+            CFBundleURLSchemes: [tripsplit]
         NSBluetoothAlwaysUsageDescription: TripSplit uses Bluetooth to find the other phones of your group and sync the group with them when no Wi-Fi network is shared.
   TripSplitUITests:
     type: bundle.ui-testing

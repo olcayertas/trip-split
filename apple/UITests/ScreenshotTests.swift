@@ -35,6 +35,11 @@ final class ScreenshotTests: XCTestCase {
         shot("03-create-group")
         app.buttons["Cancel"].tap()
 
+        app.buttons["joinGroup"].tap()
+        XCTAssertTrue(app.buttons["scanQR"].waitForExistence(timeout: 5))
+        shot("12-join")
+        app.buttons["Cancel"].tap()
+
         groupRow.tap()
         XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 10))
         shot("04-expenses")
@@ -58,6 +63,10 @@ final class ScreenshotTests: XCTestCase {
         app.tabBars.buttons.element(boundBy: 2).tap()
         XCTAssertTrue(app.buttons["addMember"].waitForExistence(timeout: 5))
         shot("08-members")
+        app.buttons["invite"].tap()
+        XCTAssertTrue(app.images["Invite QR code"].waitForExistence(timeout: 5))
+        shot("11-invite")
+        app.buttons["Done"].tap()
 
         app.buttons["History"].tap()
         sleep(1)

@@ -161,6 +161,16 @@
         }
       }
     },
+    "%@ was claimed by another phone. Choose another member or add yourself as a new member.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ üyesini başka bir telefon üstlendi. Başka bir üye seçin veya kendinizi yeni üye olarak ekleyin."
+          }
+        }
+      }
+    },
     "%@ · %@": {
       "localizations": {
         "tr": {
@@ -241,6 +251,16 @@
         }
       }
     },
+    "Add %@ to earlier expenses?": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ önceki harcamalara da eklensin mi?"
+          }
+        }
+      }
+    },
     "Add expense": {
       "localizations": {
         "tr": {
@@ -291,12 +311,52 @@
         }
       }
     },
+    "Allow the camera for TripSplit in Settings, or paste the invite link instead.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarlar'dan TripSplit için kameraya izin verin veya davet bağlantısını yapıştırın."
+          }
+        }
+      }
+    },
+    "Also earlier expenses": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki harcamalar da"
+          }
+        }
+      }
+    },
     "Amount": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Tutar"
+          }
+        }
+      }
+    },
+    "Anyone who gets this link can read and change the group. Send it only to group members.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu bağlantıyı alan herkes grubu okuyabilir ve değiştirebilir. Yalnızca grup üyelerine gönderin."
+          }
+        }
+      }
+    },
+    "Anyone who has this code or link can read and change the group. Show it only to members of the group.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu koda veya bağlantıya sahip herkes grubu okuyabilir ve değiştirebilir. Yalnızca grup üyelerine gösterin."
           }
         }
       }
@@ -367,6 +427,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "En az bir üye seçin."
+          }
+        }
+      }
+    },
+    "Choose the member that is you. Your expenses and balance then show on this phone.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sizin olan üyeyi seçin. Harcamalarınız ve bakiyeniz bu telefonda görünür."
           }
         }
       }
@@ -447,6 +517,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bu harcama silinsin mi?"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bitti"
           }
         }
       }
@@ -551,6 +631,26 @@
         }
       }
     },
+    "From now on": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bundan sonra"
+          }
+        }
+      }
+    },
+    "From now on: earlier expenses do not change. Also earlier expenses: %lld expenses change.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bundan sonra: önceki harcamalar değişmez. Önceki harcamalar da: %lld harcama değişir."
+          }
+        }
+      }
+    },
     "Gets back": {
       "localizations": {
         "tr": {
@@ -621,6 +721,36 @@
         }
       }
     },
+    "I am not in the list. Add me.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listede yokum. Beni ekle."
+          }
+        }
+      }
+    },
+    "Invite": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Davet et"
+          }
+        }
+      }
+    },
+    "Invite QR code": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Davet QR kodu"
+          }
+        }
+      }
+    },
     "Invite link": {
       "localizations": {
         "tr": {
@@ -651,6 +781,16 @@
         }
       }
     },
+    "Join this group?": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu gruba katılınsın mı?"
+          }
+        }
+      }
+    },
     "Last sync": {
       "localizations": {
         "tr": {
@@ -667,6 +807,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gruptan ayrıldı"
+          }
+        }
+      }
+    },
+    "Let a friend scan this code in the TripSplit app. Then open Nearby on both phones.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir arkadaşınız bu kodu TripSplit uygulamasında taratsın. Sonra iki telefonda da Yakındakiler ekranını açın."
           }
         }
       }
@@ -697,6 +847,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Üyeler"
+          }
+        }
+      }
+    },
+    "Members with another phone": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başka telefonu olan üyeler"
+          }
+        }
+      }
+    },
+    "Members without a phone": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefonu olmayan üyeler"
           }
         }
       }
@@ -751,6 +921,16 @@
         }
       }
     },
+    "No free member.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boş üye yok."
+          }
+        }
+      }
+    },
     "No groups yet": {
       "localizations": {
         "tr": {
@@ -801,12 +981,42 @@
         }
       }
     },
+    "Not now": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şimdi değil"
+          }
+        }
+      }
+    },
     "Nothing yet.": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Henüz bir şey yok."
+          }
+        }
+      }
+    },
+    "Open Nearby": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yakındakileri aç"
+          }
+        }
+      }
+    },
+    "Open Nearby on this phone and on a phone of the group. The expenses arrive when the phones find each other.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu telefonda ve grubun bir telefonunda Yakındakiler ekranını açın. Telefonlar birbirini bulunca harcamalar gelir."
           }
         }
       }
@@ -981,12 +1191,52 @@
         }
       }
     },
+    "Scan QR code": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR kodu tara"
+          }
+        }
+      }
+    },
     "Settled": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Hesaplaştı"
+          }
+        }
+      }
+    },
+    "Share": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paylaş"
+          }
+        }
+      }
+    },
+    "Share link": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantıyı paylaş"
+          }
+        }
+      }
+    },
+    "Share the link?": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantı paylaşılsın mı?"
           }
         }
       }
@@ -1091,6 +1341,36 @@
         }
       }
     },
+    "Take over": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devral"
+          }
+        }
+      }
+    },
+    "Take over %@?": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ devralınsın mı?"
+          }
+        }
+      }
+    },
+    "The camera is not available": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamera kullanılamıyor"
+          }
+        }
+      }
+    },
     "The date is not valid.": {
       "localizations": {
         "tr": {
@@ -1141,6 +1421,16 @@
         }
       }
     },
+    "These expenses have exact amounts and stay as they are. Edit them by hand: %@.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu harcamalarda tam tutarlar var ve olduğu gibi kalır. Elle düzenleyin: %@."
+          }
+        }
+      }
+    },
     "This is me": {
       "localizations": {
         "tr": {
@@ -1161,12 +1451,32 @@
         }
       }
     },
+    "This member is linked to another phone. Take it over only if that phone is yours or lost.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu üye başka bir telefona bağlı. Yalnızca o telefon sizinse veya kaybolduysa devralın."
+          }
+        }
+      }
+    },
     "This member was claimed by another phone. Choose another member or add a new one.": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Bu üyeyi başka bir telefon üstlendi. Başka bir üye seçin veya yenisini ekleyin."
+          }
+        }
+      }
+    },
+    "This phone got a new identity after a restore from a backup. A member that you claimed before still belongs to the old identity. Add yourself as a new member.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu telefon yedekten geri yüklendikten sonra yeni bir kimlik aldı. Daha önce üstlendiğiniz üye hâlâ eski kimliğe ait. Kendinizi yeni üye olarak ekleyin."
           }
         }
       }
@@ -1211,6 +1521,16 @@
         }
       }
     },
+    "Use this if the member was linked to your old phone, for example before a restore.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üye eski telefonunuza bağlıysa, örneğin yedekten geri yüklemeden önce, bunu kullanın."
+          }
+        }
+      }
+    },
     "Waiting": {
       "localizations": {
         "tr": {
@@ -1251,6 +1571,16 @@
         }
       }
     },
+    "Who are you?": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siz kimsiniz?"
+          }
+        }
+      }
+    },
     "Wi-Fi": {
       "localizations": {
         "tr": {
@@ -1267,6 +1597,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Siz"
+          }
+        }
+      }
+    },
+    "You will get all expenses of this group, and you can read and change them.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu grubun tüm harcamalarını alırsınız ve bunları okuyup değiştirebilirsiniz."
+          }
+        }
+      }
+    },
+    "Your claim of %@ did not count: another phone claimed it first. Choose another member or add a new one.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ üyesi için talebiniz geçmedi: başka bir telefon önce üstlendi. Başka bir üye seçin veya yenisini ekleyin."
           }
         }
       }

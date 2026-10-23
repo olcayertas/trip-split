@@ -24,6 +24,8 @@ final class AppModel {
     private(set) var repository: GroupRepository?
     private(set) var failure: String?
     private(set) var coordinator: SyncCoordinator?
+    /// An invite from a `tripsplit://` link or a scan, waiting for the user to confirm.
+    var pendingInvite: Invite?
 
     init() {
         let args = ProcessInfo.processInfo.arguments
@@ -85,5 +87,8 @@ struct RootView: View {
             }
         }
         .background(M3Color.background)
+        .onOpenURL { url in
+            if let invite = Invite.parse(url.absoluteString) { model.pendingInvite = invite }
+        }
     }
 }

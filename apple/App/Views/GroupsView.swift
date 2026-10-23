@@ -2,9 +2,15 @@ import SwiftUI
 import TripSplitCore
 import TripSplitStore
 
+struct GroupRoute: Hashable {
+    let id: String
+    var openNearby = false
+}
+
 struct GroupsView: View {
     let repository: GroupRepository
-    @State private var path: [String] = []
+    @Environment(AppModel.self) private var model
+    @State private var path: [GroupRoute] = []
     @State private var creating = false
     @State private var joining = false
 
@@ -16,7 +22,7 @@ struct GroupsView: View {
                 } else {
                     List {
                         ForEach(repository.groups) { group in
-                            NavigationLink(value: group.id) { row(group.id) }.m3Row()
+                            NavigationLink(value: GroupRoute(id: group.id)) { row(group.id) }.m3Row()
                         }
                     }
                     .m3Screen()
@@ -24,7 +30,7 @@ struct GroupsView: View {
             }
             .background(M3Color.background)
             .navigationTitle("Groups")
-            .navigationDestination(for: String.self) { GroupView(repository: repository, groupId: $0) }
+            .navigationDestination(for: GroupRoute.self) { GroupView(repository: repository, groupId: $0.id, openNearby: $0.openNearby) }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Join", systemImage: "person.badge.plus") { joining = true }
@@ -36,10 +42,22 @@ struct GroupsView: View {
                 }
             }
             .sheet(isPresented: $creating) {
-                CreateGroupView(repository: repository) { id in path = [id] }
+                CreateGroupView(repository: repository) { id in path = [GroupRoute(id: id)] }
+            }
+            .confirmationDialog("Join this group?", isPresented: Binding(get: { model.pendingInvite != nil }, set: { if !$0 { model.pendingInvite = nil } }),
+                                titleVisibility: .visible, presenting: model.pendingInvite) { invite in
+                Button("Join") {
+                    Task {
+                        try? await repository.join(invite)
+                        model.pendingInvite = nil
+                        path = [GroupRoute(id: invite.groupId, openNearby: true)]
+                    }
+                }
+            } message: { _ in
+                Text("You will get all expenses of this group, and you can read and change them.")
             }
             .sheet(isPresented: $joining) {
-                JoinGroupView(repository: repository) { id in path = [id] }
+                JoinGroupView(repository: repository) { id in path = [GroupRoute(id: id, openNearby: true)] }
             }
         }
     }
@@ -142,10 +160,15 @@ struct JoinGroupView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
     @State private var failed = false
+    @State private var scanning = false
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Button { scanning = true } label: { Label("Scan QR code", systemImage: "qrcode.viewfinder") }
+                        .accessibilityIdentifier("scanQR").m3Row()
+                }
                 Section {
                     TextField("tripsplit://join?g=…", text: $text, axis: .vertical)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -158,6 +181,15 @@ struct JoinGroupView: View {
                 }
             }
             .m3Screen()
+            .sheet(isPresented: $scanning) {
+                ScanInviteView { invite in
+                    Task {
+                        try? await repository.join(invite)
+                        dismiss()
+                        onJoined(invite.groupId)
+                    }
+                }
+            }
             .navigationTitle("Join group")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

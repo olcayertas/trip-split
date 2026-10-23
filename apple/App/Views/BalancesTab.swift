@@ -85,6 +85,7 @@ struct BalancesTab: View {
             }
         }
         .m3Screen()
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 56) }
         .sheet(item: $recording) { seed in
             RecordPaymentView(repository: repository, groupId: groupId, seed: seed)
         }
@@ -105,7 +106,7 @@ struct RecordPaymentView: View {
 
     private var state: GroupState { repository.state(of: groupId) }
     private var base: String { state.group?.baseCurrency ?? "EUR" }
-    private var rate: String { currency == base ? "1" : rateText }
+    private var rate: String { currency == base ? "1" : ExpenseDraft.normalizedRate(rateText) }
 
     private var body_: JSONValue? {
         guard let amount = AmountFormat.parse(amountText, currency: currency), amount > 0, from != to, !from.isEmpty, !to.isEmpty else { return nil }
