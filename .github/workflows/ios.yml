@@ -17,3 +17,19 @@ jobs:
       - uses: actions/checkout@v4
       - run: swift test
         working-directory: apple/Store
+
+  app:
+    name: App build (simulator)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen generate
+        working-directory: apple
+      - run: >
+          xcodebuild build
+          -project TripSplit.xcodeproj
+          -scheme TripSplit
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+        working-directory: apple

@@ -1,0 +1,73 @@
+import SwiftUI
+import TripSplitCore
+import TripSplitStore
+
+@main
+struct TripSplitApp: App {
+    @State private var model = AppModel()
+
+    var body: some Scene {
+        WindowGroup {
+            RootView()
+                .environment(model)
+                .tint(M3Color.primary)
+        }
+    }
+}
+
+/// Opens the database and the repository once. Launch arguments serve the UI tests and the screenshots:
+/// `-uitest` uses a temporary database and an in-memory install marker; `-seed-demo` adds sample data.
+@MainActor
+@Observable
+final class AppModel {
+    private(set) var repository: GroupRepository?
+    private(set) var failure: String?
+
+    init() {
+        let args = ProcessInfo.processInfo.arguments
+        do {
+            let testing = args.contains("-uitest")
+            let directory: URL
+            let marker: any InstallMarkerStore
+            if testing {
+                directory = FileManager.default.temporaryDirectory.appending(path: "tripsplit-ui-" + UUID().uuidString)
+                marker = InMemoryInstallMarker()
+            } else {
+                directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+                    .appending(path: "TripSplit", directoryHint: .isDirectory)
+                marker = KeychainInstallMarker()
+            }
+            let database = try AppDatabase.open(directory: directory)
+            let wall = Int64(Date().timeIntervalSince1970 * 1000)
+            let identity = try database.loadIdentity(marker: marker, wall: wall)
+            let repo = GroupRepository(database: database, identity: identity)
+            repo.start()
+            repository = repo
+            if args.contains("-seed-demo") {
+                Task { await DemoData.seed(repo) }
+            }
+        } catch {
+            failure = String(describing: error)
+        }
+    }
+}
+
+struct RootView: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Group {
+            if let repo = model.repository {
+                if repo.identity.displayName.isEmpty {
+                    FirstRunView(repository: repo)
+                } else {
+                    GroupsView(repository: repo)
+                }
+            } else {
+                ContentUnavailableView("Cannot open the data", systemImage: "exclamationmark.triangle",
+                                       description: Text(model.failure ?? ""))
+            }
+        }
+        .background(M3Color.background)
+    }
+}

@@ -1,0 +1,1196 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        }
+      }
+    },
+    "%@ added the expense %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ harcama ekledi: %2$@"
+          }
+        }
+      }
+    },
+    "%@ added the member %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ üye ekledi: %2$@"
+          }
+        }
+      }
+    },
+    "%@ changed the expense %@: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ harcamayı değiştirdi: %2$@ (%3$@)"
+          }
+        }
+      }
+    },
+    "%@ claimed %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ şu üyeyi üstlendi: %2$@"
+          }
+        }
+      }
+    },
+    "%@ created the group %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ grubu oluşturdu: %2$@"
+          }
+        }
+      }
+    },
+    "%@ deleted a payment": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bir ödemeyi sildi"
+          }
+        }
+      }
+    },
+    "%@ deleted the expense %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ harcamayı sildi: %2$@"
+          }
+        }
+      }
+    },
+    "%@ made a change that this version does not know": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bu sürümün tanımadığı bir değişiklik yaptı"
+          }
+        }
+      }
+    },
+    "%@ paid %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ → %2$@ ödedi"
+          }
+        }
+      }
+    },
+    "%@ pays %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ → %2$@ öder"
+          }
+        }
+      }
+    },
+    "%@ recorded a payment": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bir ödeme kaydetti"
+          }
+        }
+      }
+    },
+    "%@ released %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ şu üyeyi bıraktı: %2$@"
+          }
+        }
+      }
+    },
+    "%@ removed %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ şu üyeyi çıkardı: %2$@"
+          }
+        }
+      }
+    },
+    "%@ renamed a member to %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ bir üyenin adını değiştirdi: %2$@"
+          }
+        }
+      }
+    },
+    "%@ renamed the group to %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ grubun adını değiştirdi: %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%lld members": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld üye"
+          }
+        }
+      }
+    },
+    "0": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0"
+          }
+        }
+      }
+    },
+    "1 %@ =": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 %@ ="
+          }
+        }
+      }
+    },
+    "A phone": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir telefon"
+          }
+        }
+      }
+    },
+    "Activities": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etkinlikler"
+          }
+        }
+      }
+    },
+    "Add": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekle"
+          }
+        }
+      }
+    },
+    "Add expense": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Harcama ekle"
+          }
+        }
+      }
+    },
+    "Add member": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üye ekle"
+          }
+        }
+      }
+    },
+    "Add the first expense of the trip.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gezinin ilk harcamasını ekleyin."
+          }
+        }
+      }
+    },
+    "All assigned": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hepsi dağıtıldı"
+          }
+        }
+      }
+    },
+    "All balances are shown in the group currency. You cannot change it later.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm bakiyeler grubun para biriminde gösterilir. Sonradan değiştirilemez."
+          }
+        }
+      }
+    },
+    "Amount": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutar"
+          }
+        }
+      }
+    },
+    "Balances": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bakiyeler"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vazgeç"
+          }
+        }
+      }
+    },
+    "Cannot open the data": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veriler açılamıyor"
+          }
+        }
+      }
+    },
+    "Choose at least one member.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En az bir üye seçin."
+          }
+        }
+      }
+    },
+    "Continue": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devam"
+          }
+        }
+      }
+    },
+    "Create": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oluştur"
+          }
+        }
+      }
+    },
+    "Create a group for your trip, or join the group of a friend.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geziniz için bir grup oluşturun veya bir arkadaşınızın grubuna katılın."
+          }
+        }
+      }
+    },
+    "Create group": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grup oluştur"
+          }
+        }
+      }
+    },
+    "Currency": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para birimi"
+          }
+        }
+      }
+    },
+    "Date": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarih"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sil"
+          }
+        }
+      }
+    },
+    "Delete this expense?": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu harcama silinsin mi?"
+          }
+        }
+      }
+    },
+    "Edit expense": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Harcamayı düzenle"
+          }
+        }
+      }
+    },
+    "Enter a valid amount.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçerli bir tutar girin."
+          }
+        }
+      }
+    },
+    "Enter an exchange rate, for example 34.75.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir kur girin, örneğin 34,75."
+          }
+        }
+      }
+    },
+    "Equal": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşit"
+          }
+        }
+      }
+    },
+    "Everyone is settled.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herkes hesaplaştı."
+          }
+        }
+      }
+    },
+    "Exact": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tam tutar"
+          }
+        }
+      }
+    },
+    "Expenses": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Harcamalar"
+          }
+        }
+      }
+    },
+    "Food": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yemek"
+          }
+        }
+      }
+    },
+    "From": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kimden"
+          }
+        }
+      }
+    },
+    "Gets back": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alacaklı"
+          }
+        }
+      }
+    },
+    "Group": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grup"
+          }
+        }
+      }
+    },
+    "Group currency": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grup para birimi"
+          }
+        }
+      }
+    },
+    "Group name": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grup adı"
+          }
+        }
+      }
+    },
+    "Groups": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gruplar"
+          }
+        }
+      }
+    },
+    "Has a phone": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefonu var"
+          }
+        }
+      }
+    },
+    "History": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçmiş"
+          }
+        }
+      }
+    },
+    "Invite link": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Davet bağlantısı"
+          }
+        }
+      }
+    },
+    "Join": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Katıl"
+          }
+        }
+      }
+    },
+    "Join group": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gruba katıl"
+          }
+        }
+      }
+    },
+    "Left the group": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gruptan ayrıldı"
+          }
+        }
+      }
+    },
+    "Lodging": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konaklama"
+          }
+        }
+      }
+    },
+    "Members": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üyeler"
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ad"
+          }
+        }
+      }
+    },
+    "Nearby": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yakındakiler"
+          }
+        }
+      }
+    },
+    "Needs attention": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İnceleme gerekiyor"
+          }
+        }
+      }
+    },
+    "No expenses yet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz harcama yok"
+          }
+        }
+      }
+    },
+    "No groups yet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz grup yok"
+          }
+        }
+      }
+    },
+    "No phone yet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz telefonu yok"
+          }
+        }
+      }
+    },
+    "Not me": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ben değilim"
+          }
+        }
+      }
+    },
+    "Nothing yet.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz bir şey yok."
+          }
+        }
+      }
+    },
+    "Other": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diğer"
+          }
+        }
+      }
+    },
+    "Owes": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borçlu"
+          }
+        }
+      }
+    },
+    "Paid by": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ödeyen"
+          }
+        }
+      }
+    },
+    "Paid by %@ · %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ödeyen: %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "Paste the invite link of the group.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grubun davet bağlantısını yapıştırın."
+          }
+        }
+      }
+    },
+    "Phones of this group on the same Wi-Fi or hotspot, or close by with Bluetooth, will show here. Keep this screen open on both phones while they sync.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aynı Wi-Fi veya hotspot ağındaki ya da Bluetooth ile yakındaki grup telefonları burada görünür. Eşitleme sürerken bu ekranı iki telefonda da açık tutun."
+          }
+        }
+      }
+    },
+    "Rate": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kur"
+          }
+        }
+      }
+    },
+    "Record": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydet"
+          }
+        }
+      }
+    },
+    "Record payment": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ödeme kaydet"
+          }
+        }
+      }
+    },
+    "Recorded payments": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydedilen ödemeler"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çıkar"
+          }
+        }
+      }
+    },
+    "Remove this member?": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu üye çıkarılsın mı?"
+          }
+        }
+      }
+    },
+    "Rename": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adı değiştir"
+          }
+        }
+      }
+    },
+    "Rename member": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üyeyi yeniden adlandır"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydet"
+          }
+        }
+      }
+    },
+    "Settled": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesaplaştı"
+          }
+        }
+      }
+    },
+    "Shopping": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alışveriş"
+          }
+        }
+      }
+    },
+    "Split": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bölüşüm"
+          }
+        }
+      }
+    },
+    "Split between": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bölüşüm"
+          }
+        }
+      }
+    },
+    "Split holiday costs with your friends. No account and no server. Phones in the group sync with each other.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tatil masraflarını arkadaşlarınızla bölüşün. Hesap yok, sunucu yok. Gruptaki telefonlar birbiriyle eşitlenir."
+          }
+        }
+      }
+    },
+    "Still to assign": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dağıtılacak"
+          }
+        }
+      }
+    },
+    "Suggested payments": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önerilen ödemeler"
+          }
+        }
+      }
+    },
+    "Sync is not available in this build yet.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşitleme bu sürümde henüz yok."
+          }
+        }
+      }
+    },
+    "The date is not valid.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarih geçerli değil."
+          }
+        }
+      }
+    },
+    "The expense stays in the history. A deleted expense cannot come back.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Harcama geçmişte kalır. Silinen harcama geri gelmez."
+          }
+        }
+      }
+    },
+    "The shares differ from the amount by %@.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paylar tutardan %@ farklı."
+          }
+        }
+      }
+    },
+    "The title is too long.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlık çok uzun."
+          }
+        }
+      }
+    },
+    "Their old expenses still count. They cannot be chosen for new expenses.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eski harcamaları sayılmaya devam eder. Yeni harcamalar için seçilemez."
+          }
+        }
+      }
+    },
+    "This is me": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu benim"
+          }
+        }
+      }
+    },
+    "This link is not valid.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu bağlantı geçerli değil."
+          }
+        }
+      }
+    },
+    "This member was claimed by another phone. Choose another member or add a new one.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu üyeyi başka bir telefon üstlendi. Başka bir üye seçin veya yenisini ekleyin."
+          }
+        }
+      }
+    },
+    "Title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlık"
+          }
+        }
+      }
+    },
+    "To": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kime"
+          }
+        }
+      }
+    },
+    "Transport": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulaşım"
+          }
+        }
+      }
+    },
+    "Unknown member": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bilinmeyen üye"
+          }
+        }
+      }
+    },
+    "Waiting for the first sync": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İlk eşitleme bekleniyor"
+          }
+        }
+      }
+    },
+    "Weights": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ağırlık"
+          }
+        }
+      }
+    },
+    "Welcome to TripSplit": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TripSplit'e hoş geldiniz"
+          }
+        }
+      }
+    },
+    "You": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siz"
+          }
+        }
+      }
+    },
+    "Your name": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adınız"
+          }
+        }
+      }
+    },
+    "amount and split": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tutar ve bölüşüm"
+          }
+        }
+      }
+    },
+    "an expense": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bir harcama"
+          }
+        }
+      }
+    },
+    "category": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kategori"
+          }
+        }
+      }
+    },
+    "date": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tarih"
+          }
+        }
+      }
+    },
+    "payer": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ödeyen"
+          }
+        }
+      }
+    },
+    "title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "başlık"
+          }
+        }
+      }
+    },
+    "tripsplit://join?g=…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tripsplit://join?g=…"
+          }
+        }
+      }
+    },
+    "≈ %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "≈ %@"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
