@@ -62,7 +62,8 @@ platform :ios do
     build_number = next_build_number(api_key)
     UI.message("Next build number: #{build_number}")
 
-    # Auth args go to the archive and the export step. The build number goes to the archive only.
+    # The archive step needs the auth args. gym adds them to the export step itself, from the loaded API key,
+    # and xcodebuild refuses them twice. The build number goes to the archive only.
     auth_args = [
       "-allowProvisioningUpdates",
       "-authenticationKeyPath #{File.expand_path(ENV['ASC_KEY_PATH'])}",
@@ -70,15 +71,27 @@ platform :ios do
       "-authenticationKeyIssuerID #{ENV['ASC_ISSUER_ID']}"
     ].join(" ")
 
+    # Sign the export with the local Apple Distribution certificate and an App Store profile. Cloud signing
+    # needs a key permission that an App Manager key does not have. get_provisioning_profile makes the profile
+    # on the first run and reuses it after that.
+    get_provisioning_profile(api_key: api_key, app_identifier: APP_ID, team_id: TEAM_ID,
+                             output_path: File.join(APPLE_DIR, "build"))
+    profile = lane_context[SharedValues::SIGH_NAME]
+
     build_app(
       project: File.join(APPLE_DIR, PROJECT),
       scheme: SCHEME,
       configuration: "Release",
       export_method: "app-store",
       export_team_id: TEAM_ID,
+      export_options: {
+        signingStyle: "manual",
+        signingCertificate: "Apple Distribution",
+        provisioningProfiles: { APP_ID => profile }
+      },
       output_directory: File.join(APPLE_DIR, "build"),
       xcargs: "#{auth_args} CURRENT_PROJECT_VERSION=#{build_number}",
-      export_xcargs: auth_args
+      export_xcargs: "-allowProvisioningUpdates"
     )
   end
 
