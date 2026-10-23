@@ -411,3 +411,96 @@ struct GroupStateTests {
         #expect(GroupState.empty.group == nil)
     }
 }
+
+@Suite("Amounts and drafts")
+struct DraftTests {
+    @Test func parseAndFormat() {
+        #expect(AmountFormat.parse("12.50", currency: "EUR") == 1250)
+        #expect(AmountFormat.parse("12,5", currency: "EUR") == 1250)
+        #expect(AmountFormat.parse("12", currency: "JPY") == 12)
+        #expect(AmountFormat.parse("12.5", currency: "JPY") == nil)
+        #expect(AmountFormat.parse("1.2.3", currency: "EUR") == nil)
+        #expect(AmountFormat.parse("-5", currency: "EUR") == nil)
+        #expect(AmountFormat.parse("", currency: "EUR") == nil)
+        #expect(AmountFormat.parse(".5", currency: "EUR") == 50)
+        #expect(AmountFormat.parse("1.234", currency: "KWD") == 1234)
+        #expect(AmountFormat.format(1250, currency: "EUR", decimalSeparator: ",") == "12,50")
+        #expect(AmountFormat.format(5, currency: "EUR") == "0.05")
+        #expect(AmountFormat.format(1_234_567, currency: "EUR", decimalSeparator: ",", groupingSeparator: ".") == "12.345,67")
+        #expect(AmountFormat.format(1234, currency: "JPY") == "1234")
+        #expect(AmountFormat.signed(-1250, currency: "EUR") == "\u{2212}12.50")
+        #expect(AmountFormat.signed(1250, currency: "EUR") == "+12.50")
+        #expect(AmountFormat.signed(0, currency: "EUR") == "0.00")
+    }
+
+    private let a = "10000000-0000-4000-8000-000000000001"
+    private let b = "20000000-0000-4000-8000-000000000002"
+
+    @Test func addBodyForEveryMode() throws {
+        var d = ExpenseDraft(currency: "USD", date: "2026-10-20", paidBy: a, members: [a, b])
+        d.title = " Lunch "
+        d.amountText = "30"
+        d.rateText = "34.75"
+        let equal = try d.addBody(expenseId: "e0000000-0000-4000-8000-000000000001", baseCurrency: "TRY")
+        #expect(isValidBody(type: "expense.add", body: equal))
+        #expect(equal["title"] == .string("Lunch"))
+        #expect(equal["money"]?["rate"] == .string("34.75"))
+
+        d.mode = .weights
+        d.weights = [a: 2, b: 1]
+        #expect(isValidBody(type: "expense.add", body: try d.addBody(expenseId: "e0000000-0000-4000-8000-000000000001", baseCurrency: "TRY")))
+
+        d.mode = .exact
+        d.exactTexts = [a: "10", b: "15"]
+        #expect(throws: DraftError.exactMismatch(remaining: 500)) { try d.addBody(expenseId: "e0000000-0000-4000-8000-000000000001", baseCurrency: "TRY") }
+        #expect(d.exactRemaining() == 500)
+        d.exactTexts[b] = "20"
+        #expect(isValidBody(type: "expense.add", body: try d.addBody(expenseId: "e0000000-0000-4000-8000-000000000001", baseCurrency: "TRY")))
+    }
+
+    @Test func baseCurrencyForcesRateOne() throws {
+        var d = ExpenseDraft(currency: "EUR", date: "2026-10-20", paidBy: a, members: [a])
+        d.title = "x"
+        d.amountText = "1"
+        d.rateText = "garbage"
+        #expect(try d.money(baseCurrency: "EUR")["rate"] == .string("1"))
+        d.currency = "USD"
+        #expect(throws: DraftError.rateInvalid) { try d.money(baseCurrency: "EUR") }
+        d.rateText = "0"
+        #expect(throws: DraftError.rateInvalid) { try d.money(baseCurrency: "EUR") }
+    }
+
+    @Test func errors() {
+        var d = ExpenseDraft(currency: "EUR", date: "2026-10-20")
+        #expect(throws: DraftError.titleEmpty) { try d.addBody(expenseId: "e0000000-0000-4000-8000-000000000001", baseCurrency: "EUR") }
+        d.title = "x"
+        #expect(throws: DraftError.noPayer) { try d.addBody(expenseId: "e0000000-0000-4000-8000-000000000001", baseCurrency: "EUR") }
+        d.paidBy = a
+        d.amountText = "0"
+        #expect(throws: DraftError.amountInvalid) { try d.addBody(expenseId: "e0000000-0000-4000-8000-000000000001", baseCurrency: "EUR") }
+        d.amountText = "5"
+        #expect(throws: DraftError.noMembers) { try d.addBody(expenseId: "e0000000-0000-4000-8000-000000000001", baseCurrency: "EUR") }
+    }
+
+    @Test func editBodyHasOnlyChangedGroups() throws {
+        let ops = try vector("fold.json")["cases"]!.arrayValue!.first { !$0["expected"]!["expenses"]!.arrayValue!.isEmpty }!
+        let state = GroupState(foldResult: ops["expected"]!)
+        let e = state.expenses[0]
+        var d = ExpenseDraft(expense: e)
+        #expect(try d.editBody(original: e, baseCurrency: state.group!.baseCurrency) == nil)
+        d.title = e.title + "!"
+        let body = try #require(try d.editBody(original: e, baseCurrency: state.group!.baseCurrency))
+        #expect(body["fields"]?.objectValue?.keys.sorted() == ["title"])
+        d.amountText = "1.00"
+        let body2 = try #require(try d.editBody(original: e, baseCurrency: state.group!.baseCurrency))
+        #expect(body2["fields"]?.objectValue?.keys.sorted() == ["money", "title"])
+    }
+
+    @Test func historyIsNewestFirst() throws {
+        let ops = try vector("session.json")["ops"]!.arrayValue!
+        let h = historyEntries(ops: ops)
+        #expect(h.count == ops.count)
+        #expect(zip(h, h.dropFirst()).allSatisfy { byteLess($1.hlc, $0.hlc) })
+        #expect(h.contains { $0.type == "expense.add" && $0.text == "Bread" })
+    }
+}

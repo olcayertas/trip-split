@@ -140,6 +140,15 @@ public final class GroupRepository {
         }
     }
 
+    /// The change log of a group, newest first.
+    public func history(of groupId: String) async throws -> [HistoryEntry] {
+        let ops: [JSONValue] = try await database.pool.read { db in
+            try String.fetchAll(db, sql: "SELECT op_json FROM ops WHERE group_id = ?", arguments: [groupId])
+                .compactMap { try? JSONParser.parse($0) }
+        }
+        return historyEntries(ops: ops)
+    }
+
     // MARK: Writing ops
 
     /// Validates the body with the core, then writes the op. The seq, the HLC and the op row change in
