@@ -1,0 +1,91 @@
+{
+  "description": "Canonical JSON (SPEC §2) and op hash (SPEC §4.2). Parse `input`, encode it, compare bytes.",
+  "cases": [
+    {
+      "input": {
+        "b": 1,
+        "a": [
+          true,
+          false,
+          null
+        ],
+        "c": {
+          "z": "",
+          "y": -42
+        }
+      },
+      "canonical": "{\"a\":[true,false,null],\"b\":1,\"c\":{\"y\":-42,\"z\":\"\"}}",
+      "utf8Hex": "7b2261223a5b747275652c66616c73652c6e756c6c5d2c2262223a312c2263223a7b2279223a2d34322c227a223a22227d7d"
+    },
+    {
+      "input": {
+        "name": "Ayşe Çağlar",
+        "city": "İstanbul ğüşıöç"
+      },
+      "canonical": "{\"city\":\"İstanbul ğüşıöç\",\"name\":\"Ayşe Çağlar\"}",
+      "utf8Hex": "7b2263697479223a22c4b07374616e62756c20c49fc3bcc59fc4b1c3b6c3a7222c226e616d65223a224179c59f6520c38761c49f6c6172227d"
+    },
+    {
+      "input": "quote\" backslash\\ newline\n tab\t ctrl\u0001 del slash/",
+      "canonical": "\"quote\\\" backslash\\\\ newline\\n tab\\t ctrl\\u0001 del slash/\"",
+      "utf8Hex": "2271756f74655c22206261636b736c6173685c5c206e65776c696e655c6e207461625c74206374726c5c75303030312064656c7f20736c6173682f22"
+    },
+    {
+      "input": {
+        "": 1,
+        "😀": 2,
+        "a": 3
+      },
+      "canonical": "{\"a\":3,\"😀\":2,\"\":1}",
+      "utf8Hex": "7b2261223a332c22f09f9880223a322c22ee8080223a317d"
+    },
+    {
+      "input": [
+        0,
+        9007199254740991,
+        -9007199254740991
+      ],
+      "canonical": "[0,9007199254740991,-9007199254740991]",
+      "utf8Hex": "5b302c393030373139393235343734303939312c2d393030373139393235343734303939315d"
+    },
+    {
+      "input": {},
+      "canonical": "{}",
+      "utf8Hex": "7b7d"
+    },
+    {
+      "input": [],
+      "canonical": "[]",
+      "utf8Hex": "5b5d"
+    }
+  ],
+  "opHash": [
+    {
+      "op": {
+        "v": 1,
+        "group": "00000000-0000-4000-8000-000000000001",
+        "author": "aaaaaaaa-0000-4000-8000-000000000001",
+        "seq": 1,
+        "hlc": "001761210000000-0000-aaaaaaaa-0000-4000-8000-000000000001",
+        "type": "group.create",
+        "body": {
+          "name": "Kapadokya 2026",
+          "baseCurrency": "EUR",
+          "creatorMemberId": "10000000-0000-4000-8000-000000000001",
+          "creatorName": "Ali"
+        }
+      },
+      "hash": "10a11a92ccce30220b4c1ca2637827319c94b578aaee519de1302e6415ada543"
+    }
+  ],
+  "rejected": [
+    {
+      "note": "float",
+      "json": "{\"a\":1.5}"
+    },
+    {
+      "note": "integer above 2^53-1",
+      "json": "[9007199254740992]"
+    }
+  ]
+}

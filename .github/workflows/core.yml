@@ -1,0 +1,56 @@
+name: Core
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "protocol/**"
+      - "apple/Core/**"
+      - "android/**"
+      - "design/**"
+      - ".github/workflows/core.yml"
+
+jobs:
+  vectors:
+    name: Vectors are up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r protocol/reference/requirements.txt
+      - run: python3 protocol/reference/gen_vectors.py --check
+
+  swift-core:
+    name: Swift core
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+        working-directory: apple/Core
+
+  kotlin-core:
+    name: Kotlin core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :core:test --console=plain
+        working-directory: android
+
+  design:
+    name: Design tokens are up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci && npm run check
+        working-directory: design

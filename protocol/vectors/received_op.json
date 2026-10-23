@@ -1,0 +1,115 @@
+{
+  "description": "Envelope checks on a received op (SPEC §8.3). 'hash' closes the session; 'group' and 'shape' drop only the op; unknown v/type is stored and relayed.",
+  "group": "00000000-0000-4000-8000-000000000001",
+  "cases": [
+    {
+      "op": {
+        "v": 1,
+        "group": "00000000-0000-4000-8000-000000000001",
+        "author": "aaaaaaaa-0000-4000-8000-000000000001",
+        "seq": 1,
+        "hlc": "001761210000000-0000-aaaaaaaa-0000-4000-8000-000000000001",
+        "type": "group.create",
+        "body": {
+          "name": "Kapadokya 2026",
+          "baseCurrency": "EUR",
+          "creatorMemberId": "10000000-0000-4000-8000-000000000001",
+          "creatorName": "Ali"
+        },
+        "hash": "10a11a92ccce30220b4c1ca2637827319c94b578aaee519de1302e6415ada543"
+      },
+      "result": "ok"
+    },
+    {
+      "op": {
+        "v": 1,
+        "group": "00000000-0000-4000-8000-000000000001",
+        "author": "aaaaaaaa-0000-4000-8000-000000000001",
+        "seq": 1,
+        "hlc": "001761210000000-0000-aaaaaaaa-0000-4000-8000-000000000001",
+        "type": "group.create",
+        "body": {
+          "name": "Kapadokya 2026",
+          "baseCurrency": "EUR",
+          "creatorMemberId": "10000000-0000-4000-8000-000000000001",
+          "creatorName": "Ali"
+        },
+        "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "result": "hash"
+    },
+    {
+      "op": {
+        "v": 1,
+        "group": "cccccccc-0000-4000-8000-000000000003",
+        "author": "aaaaaaaa-0000-4000-8000-000000000001",
+        "seq": 1,
+        "hlc": "001761210000000-0000-aaaaaaaa-0000-4000-8000-000000000001",
+        "type": "group.create",
+        "body": {
+          "name": "Kapadokya 2026",
+          "baseCurrency": "EUR",
+          "creatorMemberId": "10000000-0000-4000-8000-000000000001",
+          "creatorName": "Ali"
+        },
+        "hash": "052569754e7cdd02ed1703e12b1411d8187080c9d5d772f92076d7913840c98f"
+      },
+      "result": "group"
+    },
+    {
+      "op": {
+        "v": 1,
+        "group": "00000000-0000-4000-8000-000000000001",
+        "author": "aaaaaaaa-0000-4000-8000-000000000001",
+        "seq": 1,
+        "hlc": "001761210000000-0000-aaaaaaaa-0000-4000-8000-000000000001",
+        "type": "group.create",
+        "body": {
+          "name": "Kapadokya 2026",
+          "baseCurrency": "EUR",
+          "creatorMemberId": "10000000-0000-4000-8000-000000000001",
+          "creatorName": "Ali"
+        },
+        "hash": "10a11a92ccce30220b4c1ca2637827319c94b578aaee519de1302e6415ada543",
+        "x": 1
+      },
+      "result": "shape"
+    },
+    {
+      "op": {
+        "v": 1,
+        "group": "00000000-0000-4000-8000-000000000001",
+        "author": "bbbbbbbb-0000-4000-8000-000000000002",
+        "seq": 1,
+        "hlc": "001761210000000-0000-aaaaaaaa-0000-4000-8000-000000000001",
+        "type": "group.create",
+        "body": {
+          "name": "Kapadokya 2026",
+          "baseCurrency": "EUR",
+          "creatorMemberId": "10000000-0000-4000-8000-000000000001",
+          "creatorName": "Ali"
+        },
+        "hash": "f6e868620ad7cb1d9aefd56cc0ca2274607d3537eba82b9301dec0c9b77dc64e"
+      },
+      "result": "shape"
+    },
+    {
+      "op": {
+        "v": 2,
+        "group": "00000000-0000-4000-8000-000000000001",
+        "author": "aaaaaaaa-0000-4000-8000-000000000001",
+        "seq": 1,
+        "hlc": "001761210000000-0000-aaaaaaaa-0000-4000-8000-000000000001",
+        "type": "poll.add",
+        "body": {
+          "name": "Kapadokya 2026",
+          "baseCurrency": "EUR",
+          "creatorMemberId": "10000000-0000-4000-8000-000000000001",
+          "creatorName": "Ali"
+        },
+        "hash": "b5049e3496f1774ae7828e152f823e70a4dc8d3ee38b0586e8fddfd6fd67fffb"
+      },
+      "result": "ok"
+    }
+  ]
+}

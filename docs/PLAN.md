@@ -103,7 +103,7 @@ receive order. This is an operation-based CRDT with a grow-only set of ops.
   "group": "<groupId>",
   "author": "<deviceId>",
   "seq": 17,
-  "hlc": "2026-10-23T10:15:30.123Z/0005/<deviceId>",
+  "hlc": "001761214530123-0005-<deviceId>",
   "type": "expense.add",
   "body": { ... },
   "hash": "<hex SHA-256 of the canonical JSON of the op without the hash field>"
@@ -118,8 +118,8 @@ receive order. This is an operation-based CRDT with a grow-only set of ops.
 - `(author, seq)` is the op identity. `seq` starts at 1 per author per group and has no gaps. A device
   never reuses a `seq`. The device stores its next `seq` per group in the database in the same
   transaction as the op.
-- `hlc` is a Hybrid Logical Clock stamp: wall-clock millis, a 16-bit counter, and the device id as a
-  tie-breaker. HLC gives a total order that respects causality on each device and stays close to
+- `hlc` is a Hybrid Logical Clock stamp `MMMMMMMMMMMMMMM-CCCC-<deviceId>` (15-digit millis, 4-hex
+  counter, device id as tie-breaker). Byte order of the string is the HLC order (SPEC §3). HLC gives a total order that respects causality on each device and stays close to
   real time. HLC rules (review finding 5), pinned in `hlc.json`:
   1. `send`: `millis = max(last.millis, wall)`; `counter = (millis == last.millis) ? last.counter + 1 : 0`.
   2. `receive(remote)`: if `remote.millis > wall + 24 h`, do **not** adopt the remote millis; keep local
@@ -213,7 +213,7 @@ after D released it; unclaim by a non-claimant.
   the base currency, `rate` is `"1"`. Conversion:
   `baseMinor = round_half_even(amountMinor × rate × 10^(baseExp − expenseExp))`. Both apps compute it
   with **integer** arithmetic only: parse the rate into `(mantissa: Int64, scale: Int)`, multiply in
-  128-bit (`Int128`-style helper on Swift, `BigInteger` on Kotlin), then round half-even once. This
+  128-bit (`Int128` on Swift, `BigInteger` on Kotlin), then round half-even once. This
   avoids the `Decimal` / `BigDecimal` differences (review finding 12).
 - **Where conversion happens:** each expense is converted to base minor units **once**, and the split
   runs on the base amount. So balances are always in one currency and sum to zero exactly.
@@ -452,7 +452,7 @@ Localisation: English and Turkish from the start (string catalogs on iOS, `strin
 
 ### 12.1 iOS
 
-- Minimum iOS 17. SwiftUI + Observation. Swift 6 language mode, strict concurrency.
+- Minimum iOS 18 (Swift `Int128` for money arithmetic). SwiftUI + Observation. Swift 6 language mode, strict concurrency.
 - XcodeGen `project.yml`; `TripSplitCore` is a local Swift package with its own `swift test`.
 - Dependencies (SPM): GRDB. QR scan uses `AVFoundation` (or `VisionKit` `DataScannerViewController`);
   QR make uses CoreImage. No other third-party code.

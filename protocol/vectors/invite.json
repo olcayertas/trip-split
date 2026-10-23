@@ -1,0 +1,35 @@
+{
+  "description": "Invite link: tripsplit://join?g=<groupId>#k=<base64url key, no padding> (SPEC §9).",
+  "cases": [
+    {
+      "url": "tripsplit://join?g=00000000-0000-4000-8000-000000000001#k=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "valid": true,
+      "groupId": "00000000-0000-4000-8000-000000000001",
+      "keyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+    },
+    {
+      "url": "tripsplit://join?g=00000000-0000-4000-8000-000000000001&k=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "valid": false
+    },
+    {
+      "url": "tripsplit://join?g=00000000-0000-4000-8000-000000000001#k=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh",
+      "valid": false
+    },
+    {
+      "url": "tripsplit://join?g=ABCDEF00-0000-4000-8000-000000000001#k=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "valid": false
+    },
+    {
+      "url": "https://example.com/join?g=00000000-0000-4000-8000-000000000001#k=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "valid": false
+    },
+    {
+      "url": "tripsplit://join?g=00000000-0000-4000-8000-000000000001#k=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "valid": false
+    },
+    {
+      "url": "tripsplit://join?x=00000000-0000-4000-8000-000000000001#k=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "valid": false
+    }
+  ]
+}
