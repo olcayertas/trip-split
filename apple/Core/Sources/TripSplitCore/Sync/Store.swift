@@ -5,6 +5,13 @@ public struct ForkRecord: Equatable, Sendable {
     public let author: String
     public let seq: Int64
     public let foreignHash: String
+
+    public init(group: String, author: String, seq: Int64, foreignHash: String) {
+        self.group = group
+        self.author = author
+        self.seq = seq
+        self.foreignHash = foreignHash
+    }
 }
 
 public struct ReceiveSummary: Equatable, Sendable {
