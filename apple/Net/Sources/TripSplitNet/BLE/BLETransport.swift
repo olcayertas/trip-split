@@ -198,8 +198,12 @@ public final class BLETransport: NSObject, PeerTransport, @unchecked Sendable {
             try await client.enableNotifications(timeout: max(1, setup.timeIntervalSinceNow))
             _ = deadline
             let writeLimit = peripheral.maximumWriteValueLength(for: .withResponse)
+            // The write limit can still be 20 right after connect. The link reads it again before each message.
+            let box = PeripheralBox(peripheral)
             let link = BLELink(writer: ClientWriter(client: client), receiveLimit: Self.ownLimit,
                                initialChunkSize: min(writeLimit, info.maxChunk), isPeripheral: false,
+                               limitProvider: { box.peripheral.maximumWriteValueLength(for: .withResponse) },
+                               peerCap: info.maxChunk,
                                onClose: { [weak self] in self?.dropClient(id, client) })
             client.onChunk = { [weak link] chunk in link?.receive(chunk) }
             client.onDisconnect = { [weak link] in link?.disconnected() }
@@ -209,6 +213,11 @@ public final class BLETransport: NSObject, PeerTransport, @unchecked Sendable {
             queue.async { self.clients[id] = nil }
             throw error
         }
+    }
+
+    private struct PeripheralBox: @unchecked Sendable {
+        let peripheral: CBPeripheral
+        init(_ peripheral: CBPeripheral) { self.peripheral = peripheral }
     }
 
     private func dropClient(_ id: UUID, _ client: GATTClient) {

@@ -124,6 +124,16 @@ private final class WireWriter: BLEChunkWriter, @unchecked Sendable {
     }
 }
 
+private final class LockedInt: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _value: Int
+    init(_ v: Int) { _value = v }
+    var value: Int {
+        get { lock.withLock { _value } }
+        set { lock.withLock { _value = newValue } }
+    }
+}
+
 private let groupId = "00000000-0000-4000-8000-000000000001"
 private let groupKey = (0..<32).map { UInt8($0) }
 
@@ -161,6 +171,30 @@ struct BLELinkTests {
         #expect(toCentral.sizes.first == 20)
         #expect(toCentral.sizes.max() == 185)
         #expect(toPeripheral.sizes.max() == 182)
+    }
+
+    @Test func chunkSizeGrowsWhenThePlatformLimitGrows() async throws {
+        let limit = LockedInt(20)
+        let toB = WireWriter(), toA = WireWriter()
+        let a = BLELink(writer: toB, receiveLimit: 512, initialChunkSize: 20, isPeripheral: false,
+                        limitProvider: { limit.value }, peerCap: 100)
+        let b = BLELink(writer: toA, receiveLimit: 512, initialChunkSize: 20, isPeripheral: true)
+        toB.connect(b)
+        toA.connect(a)
+        let message = [UInt8](repeating: 7, count: 400)
+        try await a.send(message)  // limit is 20: chunks of 20
+        #expect(toB.sizes.max() == 20)
+        limit.value = 182          // the MTU exchange finished
+        try await a.send(message)
+        #expect(a.currentSendChunkSize == 100)  // capped by the peer limit
+        #expect(toB.sizes.suffix(4).first == 100)
+        limit.value = 20           // a lower reading never shrinks the chunk
+        try await a.send(message)
+        #expect(a.currentSendChunkSize == 100)
+        #expect(toB.sizes.suffix(4).first == 100)
+        // The receiver got three whole messages.
+        var it = b.incoming.makeAsyncIterator()
+        for _ in 0..<3 { #expect(try await it.next() == message) }
     }
 
     @Test func abortClosesThePeer() async throws {
