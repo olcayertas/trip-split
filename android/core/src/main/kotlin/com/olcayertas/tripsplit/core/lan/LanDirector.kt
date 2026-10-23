@@ -85,8 +85,9 @@ class LanDirector(
     private val fallbackEveryMs: Long = 15_000,
     private val gatewayPort: Int = LAN_PORT,
     private val bindAddress: java.net.InetAddress? = null,
+    /** Share one instance with the BLE director, so SPEC §8.3 step 7 holds across transports. */
+    private val admission: SessionAdmission = SessionAdmission(),
 ) {
-    private val admission = SessionAdmission()
     private val connector = LanConnector(device, admission, timeouts)
     private val cooldown = Cooldown(now)
     private val _state = MutableStateFlow(NearbyState())
@@ -122,6 +123,9 @@ class LanDirector(
             }
         }
     }
+
+    /** The deviceIds of the peers that DNS-SD found. The BLE director leaves these to Wi-Fi (PLAN §9.2). */
+    fun knownPeerIds(): Set<String> = synchronized(lock) { known.keys.toSet() }
 
     fun stop() {
         loop?.cancel()
@@ -214,4 +218,24 @@ class LanDirector(
         }
         _state.update { it.copy(peers = list) }
     }
+}
+
+/**
+ * One row for each peer, whatever the transport. Wi-Fi wins when both reach the peer (PLAN §9.2). The row shows the
+ * newer result of the two.
+ */
+fun mergePeers(lan: List<PeerStatus>, ble: List<PeerStatus>): List<PeerStatus> {
+    val bleById = ble.associateBy { it.deviceId }
+    val merged = lan.map { l ->
+        val b = bleById[l.deviceId]
+        if (b != null && (b.lastSyncAt ?: 0L) > (l.lastSyncAt ?: 0L)) {
+            l.copy(lastOutcome = b.lastOutcome, lastSyncAt = b.lastSyncAt, syncing = l.syncing || b.syncing)
+        } else if (b != null) {
+            l.copy(syncing = l.syncing || b.syncing)
+        } else {
+            l
+        }
+    }
+    val lanIds = lan.map { it.deviceId }.toSet()
+    return merged + ble.filter { it.deviceId !in lanIds }
 }

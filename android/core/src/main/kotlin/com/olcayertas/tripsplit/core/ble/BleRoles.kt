@@ -13,6 +13,9 @@ sealed interface CentralDecision {
 
     /** The peer has the higher deviceId and can be central. Disconnect and wait up to 15 s for it. */
     data object YieldToPeer : CentralDecision
+
+    /** Wi-Fi reaches the peer already. One session for each peer (PLAN §9.2): leave it to Wi-Fi. */
+    data object PreferOtherTransport : CentralDecision
 }
 
 const val YIELD_WAIT_MS = 15_000L

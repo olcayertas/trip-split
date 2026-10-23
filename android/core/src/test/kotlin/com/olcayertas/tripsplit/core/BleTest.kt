@@ -38,6 +38,9 @@ class FakeRadio(val mtu: Int) {
     val toPeripheral = CopyOnWriteArrayList<ByteArray>() // writes to rx
     val toCentral = CopyOnWriteArrayList<ByteArray>() // notifications on tx
     @Volatile var session: BleServerSession? = null
+
+    /** Makes the peripheral session when a central connects. Used by tests that count the connections. */
+    @Volatile var sessionFactory: (() -> BleServerSession)? = null
     @Volatile var centralSink: (ByteArray) -> Unit = {}
     @Volatile var notificationsOn = false
     @Volatile var abortSeen = false
@@ -61,7 +64,9 @@ class FakeRadio(val mtu: Int) {
             get() = centralSink
             set(v) { centralSink = v }
         override var disconnectSink: () -> Unit = {}
-        override suspend fun connect(address: String) {}
+        override suspend fun connect(address: String) {
+            if (session == null) session = sessionFactory?.invoke()
+        }
         override suspend fun setup(): CentralSetup { notificationsOn = true; return CentralSetup(info, mtu) }
         override suspend fun send(chunk: ByteArray) {
             if (chunk.size > mtu - 3) throw IOException("chunk ${chunk.size} exceeds MTU-3")
