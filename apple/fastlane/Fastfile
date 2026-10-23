@@ -50,13 +50,12 @@ platform :ios do
     build_number = latest_testflight_build_number(api_key: api_key, app_identifier: APP_ID) + 1
     UI.message("Next build number: #{build_number}")
 
-    # The same xcargs reach both the archive and the export step (known gym trap).
+    # Auth args go to the archive and the export step. The build number goes to the archive only.
     auth_args = [
       "-allowProvisioningUpdates",
       "-authenticationKeyPath #{File.expand_path(ENV['ASC_KEY_PATH'])}",
       "-authenticationKeyID #{ENV['ASC_KEY_ID']}",
-      "-authenticationKeyIssuerID #{ENV['ASC_ISSUER_ID']}",
-      "CURRENT_PROJECT_VERSION=#{build_number}"
+      "-authenticationKeyIssuerID #{ENV['ASC_ISSUER_ID']}"
     ].join(" ")
 
     build_app(
@@ -66,8 +65,8 @@ platform :ios do
       export_method: "app-store",
       export_team_id: TEAM_ID,
       output_directory: "build",
-      xcargs: auth_args,
-      export_xcargs: "-allowProvisioningUpdates"
+      xcargs: "#{auth_args} CURRENT_PROJECT_VERSION=#{build_number}",
+      export_xcargs: auth_args
     )
 
     upload_to_testflight(
