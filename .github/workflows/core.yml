@@ -8,6 +8,7 @@ on:
       - "protocol/**"
       - "apple/Core/**"
       - "android/**"
+      - "design/**"
       - ".github/workflows/core.yml"
 
 jobs:
@@ -42,3 +43,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew :core:test --console=plain
         working-directory: android
+
+  design:
+    name: Design tokens are up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci && npm run check
+        working-directory: design

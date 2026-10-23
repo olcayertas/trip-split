@@ -1,0 +1,7 @@
+{
+  "name": "tripsplit-design",
+  "private": true,
+  "type": "module",
+  "scripts": { "generate": "node generate.mjs", "check": "node generate.mjs --check" },
+  "dependencies": { "@material/material-color-utilities": "0.3.0" }
+}
