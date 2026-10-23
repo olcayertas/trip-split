@@ -10,7 +10,8 @@ who owes whom and the smallest set of payments that settles the group.
 Hard requirements from the owner:
 
 1. The app runs on iOS and Android.
-2. The app works fully offline. There is no server.
+2. The app works fully offline. There is no server that holds plain data. (Owner change, 2026-10-23: an
+   optional internet relay that stores only encrypted batches, §9.4.)
 3. Devices sync with each other over the same Wi-Fi network (or a phone hotspot) and over Bluetooth.
 4. Every member can add entries.
 5. A user can create a group. A user can join a group later and receive its full history.
@@ -24,10 +25,9 @@ exact and weights.
 
 ## 2. Non-goals for v1
 
-- No cloud backend, no accounts, no login.
+- No cloud backend that can read data, no accounts, no login. The relay of §9.4 stores only ciphertext.
 - No live exchange-rate download. The user types a rate when the currency differs from the group currency.
 - No receipt photos (they are large for BLE; see §16).
-- No sync over the internet. Two phones in different cities cannot sync.
 - No iPad or tablet-optimised layout. Phone layout only, but it must not break on a tablet.
 
 ## 3. Architecture overview
@@ -404,6 +404,36 @@ interface Link { suspend fun send(frame: ByteArray); val incoming: Flow<ByteArra
   and never restarts it on peer events.
 - Background sync (BGTask, foreground service) is out of scope for v1 (§16).
 
+### 9.4 Internet relay (owner request, 2026-10-23)
+
+Two phones in different cities could not sync in the first release. The owner asked for online sync with
+a free server. The rules are in SPEC §10.4. The reasons:
+
+- **A mailbox, not a backend.** The op log merges itself and every op is encrypted with the group key.
+  So the server only has to keep encrypted batches and give them back in order. It has no logic, no
+  accounts and no plain data. A broken or curious relay can drop or delay data. It cannot read or
+  change it, because AES-GCM rejects a changed blob.
+- **Cloudflare Workers with one Durable Object for each mailbox.** The free plan includes Workers and
+  SQLite-backed Durable Objects. A Durable Object gives one ordered writer for each mailbox, so the
+  cursor needs no locks. It does not sleep the way some free databases do. Alternatives that we did
+  not choose: Supabase (a free project pauses after about a week with no use), Firebase (large SDKs on
+  both apps), public Nostr relays (no promise of retention).
+- **Separate names.** `mailboxId` and `relayToken` come from the group key with their own labels. A person
+  who reads the discovery tag on a hotel network cannot find or read the mailbox.
+- **Trust on first use for writes.** The first `POST` stores the token hash. The server never needs the
+  key, and a stranger who guesses a mailbox id cannot write to it.
+- **Pull before push.** A new device first reads the mailbox, so it uploads only what the relay lacks.
+  Without this rule, every device would upload the full history once.
+- **Same receive rules.** Ops from the relay go through the same checks and the same idempotent store
+  as ops from a nearby session. The two paths can run at the same time.
+- **User control.** Settings has a switch "Sync over the internet", on by default, with one line that
+  says what the relay sees. The switch is for each device.
+- **Not in scope now.** Live push over WebSocket, background sync, and compaction of old batches. A
+  60-second poll while the app is open is enough for a trip.
+
+Owner steps: a Cloudflare account, `wrangler login`, and one `wrangler deploy`. The relay URL goes into
+both app builds. Until then, the apps use the URL `https://relay.invalid` and the relay sync stays off.
+
 ## 10. Persistence
 
 Same schema on both platforms (SQLite):
@@ -560,6 +590,7 @@ GitHub tracking issue.
 | 7 | Invite UI (QR make + scan, share warning), member claim UI | a new phone joins on day 3 and claims a pre-added member |
 | 8 | Distribution: Fastlane `beta`, Android release script, privacy page | TestFlight build installs; APK installs on a clean phone |
 | 9 | Field test with 3+ devices, mixed platforms; fix list | three phones converge after a day of offline edits |
+| 10 | Internet relay (§9.4): SPEC §10.4, reference relay, `relay.json` vectors, Cloudflare Worker, client in both apps, settings switch, privacy page | both apps pass `relay.json`; the Worker passes its tests; an iPhone and an Android phone on two networks converge through the deployed relay |
 
 Phases 0–2 hold most of the risk that unit tests can catch. Phases 5–6 hold the risk that only real
 devices can catch; the owner must provide at least one real iPhone and one real Android phone for them
@@ -590,6 +621,8 @@ devices can catch; the owner must provide at least one real iPhone and one real 
 | Anyone with the invite can read and write | privacy | documented; QR in person is the main path; key rotation later |
 | Restore from backup reuses `(author, seq)` | silent permanent divergence | install marker + new deviceId; DB excluded from backup; op hash detects forks |
 | A phone with a far-future clock | its edits win every LWW forever | 24 h forward-drift cap on remote HLC; skew warning |
+| The relay is down or the free plan limit is reached | no online sync | nearby sync still works; the client backs off; limits in SPEC §10.4.5 |
+| Anyone with the invite can read the mailbox | privacy | same rule as nearby sync; the relay holds only ciphertext |
 | Discovery tags and device ids are static | a stranger can track a device across networks | accepted for v1; documented; rotate tags per day later |
 
 ## 18. Decisions
