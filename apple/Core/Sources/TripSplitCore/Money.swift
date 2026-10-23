@@ -91,6 +91,12 @@ public struct Payment: Equatable, Sendable {
     public let from: String
     public let to: String
     public let amountMinor: Int64
+
+    public init(from: String, to: String, amountMinor: Int64) {
+        self.from = from
+        self.to = to
+        self.amountMinor = amountMinor
+    }
 }
 
 /// Greedy settlement: the largest debtor pays the largest creditor; ties by id bytes.

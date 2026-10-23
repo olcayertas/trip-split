@@ -399,3 +399,20 @@ func capture<T: Sendable>(_ body: @Sendable () async throws -> T) async -> Resul
 extension Result {
     var failure: Failure? { if case let .failure(e) = self { return e }; return nil }
 }
+
+@Suite("Group state")
+struct GroupStateTests {
+    @Test func decodesEveryFoldVector() throws {
+        for c in try vector("fold.json")["cases"]!.arrayValue! {
+            let expected = c["expected"]!
+            let state = GroupState(foldResult: expected)
+            #expect(state.expenses.count == expected["expenses"]!.arrayValue!.count)
+            #expect(state.members.count == expected["members"]!.arrayValue!.count)
+            #expect(state.settlements.count == expected["settlements"]!.arrayValue!.count)
+            #expect(state.balances.count == expected["balances"]!.objectValue!.count)
+            #expect(state.suggestedPayments.count == expected["suggestedPayments"]!.arrayValue!.count)
+            #expect((state.group != nil) == (expected["group"]!.objectValue != nil))
+        }
+        #expect(GroupState.empty.group == nil)
+    }
+}

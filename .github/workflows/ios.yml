@@ -1,0 +1,19 @@
+name: iOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "apple/**"
+      - "protocol/**"
+      - ".github/workflows/ios.yml"
+
+jobs:
+  store:
+    name: Swift store (GRDB)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+        working-directory: apple/Store
