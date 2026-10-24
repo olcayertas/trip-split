@@ -25,7 +25,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // SPEC §10.4.3: the relay URL is fixed in the build. The placeholder keeps the relay sync off.
         // Set it with -PrelayBaseUrl=https://... for a build that talks to a relay.
-        val relayUrl = providers.gradleProperty("relayBaseUrl").getOrElse("https://relay.invalid")
+        val relayUrl = providers.gradleProperty("relayBaseUrl").getOrElse("https://tripsplit-relay.olcayertas.workers.dev")
         buildConfigField("String", "RELAY_BASE_URL", "\"$relayUrl\"")
     }
 

@@ -433,6 +433,7 @@ a free server. The rules are in SPEC §10.4. The reasons:
 
 Owner steps: a Cloudflare account, `wrangler login`, and one `wrangler deploy`. The relay URL goes into
 both app builds. Until then, the apps use the URL `https://relay.invalid` and the relay sync stays off.
+Done on 2026-10-24: the relay runs at `https://tripsplit-relay.olcayertas.workers.dev`, and both builds use it.
 
 ## 10. Persistence
 
