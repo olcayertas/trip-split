@@ -57,6 +57,18 @@ class PersistenceTest {
     }
 
     @Test
+    fun currentHasTheNameSetAfterStart() = runBlocking {
+        // Root reads current() after a rotation. The identity from ensure() at start still has no name.
+        val manager = IdentityManager(db, FakeMarker(), ::nextId)
+        val started = manager.ensure()
+        assertEquals("", started.displayName)
+        manager.setDisplayName("Ayşe")
+        assertEquals("Ayşe", manager.current()?.displayName)
+        assertEquals(started.deviceId, manager.current()?.deviceId)
+        assertEquals("", started.displayName) // the start value does not change: that was the bug
+    }
+
+    @Test
     fun restoreWithoutMarkerMintsANewDeviceIdAndKeepsTheOldOne() = runBlocking {
         val marker = FakeMarker()
         val first = IdentityManager(db, marker, ::nextId).ensure()

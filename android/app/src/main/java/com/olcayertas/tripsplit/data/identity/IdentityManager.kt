@@ -37,6 +37,9 @@ class IdentityManager(
 
     suspend fun setDisplayName(name: String) = db.device().setName(name)
 
+    /** The identity as stored now, with the name the user set after [ensure]. Null before the first [ensure]. */
+    suspend fun current(): DeviceIdentity? = db.device().get()?.toIdentity()
+
     private fun DeviceEntity.toIdentity() =
         DeviceIdentity(deviceId, displayName, previousIds.split(',').filter { it.isNotEmpty() })
 }
