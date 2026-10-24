@@ -20,8 +20,8 @@ android {
         applicationId = "com.olcayertas.tripsplit"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // SPEC §10.4.3: the relay URL is fixed in the build. The placeholder keeps the relay sync off.
         // Set it with -PrelayBaseUrl=https://... for a build that talks to a relay.
