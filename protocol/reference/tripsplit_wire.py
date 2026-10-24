@@ -299,8 +299,13 @@ class RelayClient:
         self.batch_key = relay_batch_key(group_key, group_id)
         self.nonce_fn = nonce_fn
         self.page_limit = page_limit
+        self.epoch: str | None = None  # SPEC §10.4.4 step 4
         self.cursor = 0
         self.on_relay: set[tuple[str, int]] = set()  # (author, seq) the relay is known to hold
+
+    def _forget_relay(self):
+        self.cursor = 0
+        self.on_relay = set()
 
     @property
     def vector(self) -> dict[str, int]:
@@ -324,6 +329,12 @@ class RelayClient:
                 "GET", "/v1/m/%s/batches?after=%d&limit=%d" % (self.mailbox, self.cursor, self.page_limit), None)
             if status != 200:
                 raise RelayError(status)
+            if body.get("epoch") != self.epoch:
+                stale = self.cursor > 0 or bool(self.on_relay)
+                self.epoch = body.get("epoch")
+                if stale:  # a new life of the mailbox: read it again from the start
+                    self._forget_relay()
+                    continue
             for item in body["batches"]:
                 stored += self._apply(b64url_decode(item["blob"]))
                 self.cursor = item["cursor"]
@@ -360,9 +371,15 @@ class RelayClient:
             if not batch:
                 return
             blob = seal_batch(self.batch_key, self.mailbox, batch, self.nonce_fn() if self.nonce_fn else None)
-            status, _ = self.transport("POST", "/v1/m/%s/batches" % self.mailbox, blob)
+            status, answer = self.transport("POST", "/v1/m/%s/batches" % self.mailbox, blob)
             if status != 201:
                 raise RelayError(status)
+            if self.epoch is None:
+                self.epoch = answer["epoch"]
+            elif answer["epoch"] != self.epoch:  # the mailbox was made again during this sync
+                self.epoch = answer["epoch"]
+                self._forget_relay()
+                raise _EpochChanged()
             self.on_relay.update((o["author"], o["seq"]) for o in batch)
             sent += len(batch)
             batch, size = [], 0
@@ -377,8 +394,17 @@ class RelayClient:
         return sent
 
     def sync(self) -> tuple[int, int]:
-        """Pull, then push. Returns (ops stored, ops sent)."""
-        return self.pull(), self.push()
+        """Pull, then push. Returns (ops stored, ops sent). A new epoch during push runs it one more time."""
+        stored = self.pull()
+        try:
+            return stored, self.push()
+        except _EpochChanged:
+            stored += self.pull()
+            return stored, self.push()
+
+
+class _EpochChanged(Exception):
+    pass
 
 
 class RelayError(Exception):

@@ -133,12 +133,14 @@ export class Mailbox extends DurableObject<Env> {
     const after = afterText === null ? 0 : Number(afterText);
     const limit = limitText === null ? DEFAULT_LIMIT : Number(limitText);
     if (limit < 1 || limit > MAX_LIMIT) return json(400, { error: "bad query" });
-    if (this.getMeta("tokenHash") === null) return json(200, { batches: [], more: false });
+    const epoch = this.getMeta("epoch");
+    if (epoch === null) return json(200, { epoch: null, batches: [], more: false });
     if (!(await this.authorised(token))) return json(403, { error: "forbidden" });
     const sql = this.sql();
     const rows = [...sql.exec("SELECT cursor, blob FROM batches WHERE cursor > ? ORDER BY cursor LIMIT ?", after, limit + 1)];
     const page = rows.slice(0, limit);
     return json(200, {
+      epoch,
       batches: page.map((r) => ({ cursor: r.cursor as number, blob: base64url(new Uint8Array(r.blob as ArrayBuffer)) })),
       more: rows.length > limit,
     });
@@ -166,6 +168,8 @@ export class Mailbox extends DurableObject<Env> {
     if (!exists) {
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token as string));
       this.setMeta("tokenHash", hex(digest));
+      // SPEC 10.4.3: a new epoch for each life of the mailbox, so clients can see a reset.
+      this.setMeta("epoch", hex(crypto.getRandomValues(new Uint8Array(16)).buffer));
     }
     const cursor = count + 1;
     this.sql().exec("INSERT INTO batches (cursor, blob) VALUES (?, ?)", cursor, body);
@@ -173,6 +177,6 @@ export class Mailbox extends DurableObject<Env> {
     this.setMeta("bytes", bytes + body.length);
     this.setMeta("lastPost", now);
     await this.ctx.storage.setAlarm(now + num(this.env.RETENTION_SECONDS, RETENTION_SECONDS) * 1000 + 1000);
-    return json(201, { cursor });
+    return json(201, { cursor, epoch: this.getMeta("epoch") });
   }
 }

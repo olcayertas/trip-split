@@ -34,10 +34,12 @@ data class GroupEntity(
     @ColumnInfo(name = "relay_cursor", defaultValue = "0") val relayCursor: Long = 0,
     /** SPEC §10.4.4: JSON object, author to the highest seq that the relay holds. */
     @ColumnInfo(name = "relay_vector", defaultValue = "{}") val relayVector: String = "{}",
+    /** SPEC §10.4.4 step 4: the epoch of the mailbox that the cursor and the vector are true for. Null: not known. */
+    @ColumnInfo(name = "relay_epoch") val relayEpoch: String? = null,
 ) {
     override fun equals(other: Any?) = other is GroupEntity && other.groupId == groupId &&
         other.groupKey.contentEquals(groupKey) && other.createdAt == createdAt && other.lastUsedAt == lastUsedAt &&
-        other.relayCursor == relayCursor && other.relayVector == relayVector
+        other.relayCursor == relayCursor && other.relayVector == relayVector && other.relayEpoch == relayEpoch
 
     override fun hashCode() = groupId.hashCode()
 }

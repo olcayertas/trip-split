@@ -64,11 +64,12 @@ class RelayStoreTest {
         raw.close()
 
         val migrated = Room.databaseBuilder(context, TripSplitDatabase::class.java, name)
-            .addMigrations(TripSplitDatabase.MIGRATION_1_2).allowMainThreadQueries().build()
+            .addMigrations(TripSplitDatabase.MIGRATION_1_2, TripSplitDatabase.MIGRATION_2_3).allowMainThreadQueries().build()
         try {
             val g = runBlocking { migrated.groups().get(GID) }!!
             assertEquals(0L, g.relayCursor)
             assertEquals("{}", g.relayVector)
+            assertEquals(null, g.relayEpoch)
             assertEquals(2L, g.lastUsedAt)
         } finally {
             migrated.close()
@@ -80,8 +81,10 @@ class RelayStoreTest {
         val store = RoomOpStore(db)
         store.addGroup(GID, ByteArray(32))
         assertEquals(RelayState(), store.relayState(GID))
-        store.saveRelayState(GID, RelayState(5, mapOf(IDA to 3L)))
-        assertEquals(RelayState(5, mapOf(IDA to 3L)), RoomOpStore(db).relayState(GID))
+        store.saveRelayState(GID, RelayState(5, mapOf(IDA to 3L), "e".repeat(32)))
+        assertEquals(RelayState(5, mapOf(IDA to 3L), "e".repeat(32)), RoomOpStore(db).relayState(GID))
+        store.saveRelayState(GID, RelayState())
+        assertEquals(RelayState(), RoomOpStore(db).relayState(GID))
     }
 
     @Test

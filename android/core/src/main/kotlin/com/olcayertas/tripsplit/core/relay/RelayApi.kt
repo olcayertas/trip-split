@@ -15,7 +15,11 @@ import kotlinx.serialization.json.long
 
 class RelayBatch(val cursor: Long, val blob: ByteArray)
 
-class RelayPage(val batches: List<RelayBatch>, val more: Boolean)
+/** [epoch] is null when the relay has no mailbox for this id (SPEC §10.4.3). */
+class RelayPage(val batches: List<RelayBatch>, val more: Boolean, val epoch: String?)
+
+/** The answer to a `POST`: the cursor of the stored blob and the epoch of the mailbox. */
+class RelayPosted(val cursor: Long, val epoch: String)
 
 /** What went wrong with a relay request (SPEC §10.4.3). Only [RETRY] is worth a later try with the same data. */
 enum class RelayFailure { RETRY, FORBIDDEN, FULL, TOO_LARGE, BAD }
@@ -24,8 +28,8 @@ class RelayException(val failure: RelayFailure, message: String) : Exception(mes
 
 /** The two requests of SPEC §10.4.3. Each one throws [RelayException]. */
 interface RelayApi {
-    /** `POST /v1/m/<mailboxId>/batches`. Returns the cursor of the stored blob. */
-    suspend fun push(mailboxId: String, token: String, blob: ByteArray): Long
+    /** `POST /v1/m/<mailboxId>/batches`. */
+    suspend fun push(mailboxId: String, token: String, blob: ByteArray): RelayPosted
 
     /** `GET /v1/m/<mailboxId>/batches?after=..&limit=..`. */
     suspend fun pull(mailboxId: String, token: String, after: Long, limit: Int): RelayPage
@@ -35,9 +39,12 @@ interface RelayApi {
 class HttpRelayApi(baseUrl: String, private val timeoutMs: Int = 15_000) : RelayApi {
     private val base = baseUrl.trimEnd('/')
 
-    override suspend fun push(mailboxId: String, token: String, blob: ByteArray): Long {
+    override suspend fun push(mailboxId: String, token: String, blob: ByteArray): RelayPosted {
         val body = request("POST", "$base/v1/m/$mailboxId/batches", token, blob, 201)
-        return parse { Json.parseToJsonElement(body).jsonObject.getValue("cursor").jsonPrimitive.long }
+        return parse {
+            val o = Json.parseToJsonElement(body).jsonObject
+            RelayPosted(o.getValue("cursor").jsonPrimitive.long, o.getValue("epoch").jsonPrimitive.content)
+        }
     }
 
     override suspend fun pull(mailboxId: String, token: String, after: Long, limit: Int): RelayPage {
@@ -48,7 +55,8 @@ class HttpRelayApi(baseUrl: String, private val timeoutMs: Int = 15_000) : Relay
                 val o = it.jsonObject
                 RelayBatch(o.getValue("cursor").jsonPrimitive.long, Base64.getUrlDecoder().decode(o.getValue("blob").jsonPrimitive.content))
             }
-            RelayPage(batches, root.getValue("more").jsonPrimitive.boolean)
+            val epoch = root.getValue("epoch").let { if (it is kotlinx.serialization.json.JsonNull) null else it.jsonPrimitive.content }
+            RelayPage(batches, root.getValue("more").jsonPrimitive.boolean, epoch)
         }
     }
 

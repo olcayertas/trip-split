@@ -86,7 +86,7 @@ describe("storage", () => {
 describe("retention", () => {
   it("deletes the mailbox when the alarm runs after the retention time", async () => {
     const m = mailboxId();
-    await call(m, "POST", TOKEN, blob(10));
+    const first = ((await (await call(m, "POST", TOKEN, blob(10))).json()) as any).epoch;
     const stub = env.MAILBOX.get(env.MAILBOX.idFromName(m));
     await runInDurableObject(stub, async (_i, state) => {
       // Move the last POST time back: now it is older than RETENTION_SECONDS (3600).
@@ -94,8 +94,13 @@ describe("retention", () => {
     });
     expect(await runDurableObjectAlarm(stub)).toBe(true);
     const res = await call(m, "GET", OTHER);
-    expect(await res.json()).toEqual({ batches: [], more: false });
-    expect((await call(m, "POST", OTHER, blob(10))).status).toBe(201); // a new owner, a new cursor 1
+    expect(await res.json()).toEqual({ epoch: null, batches: [], more: false });
+    const again = await call(m, "POST", OTHER, blob(10));
+    expect(again.status).toBe(201); // a new owner, a new cursor 1, a new epoch
+    const answer = (await again.json()) as any;
+    expect(answer.cursor).toBe(1);
+    expect(answer.epoch).toMatch(/^[0-9a-f]{32}$/);
+    expect(answer.epoch).not.toBe(first);
     expect(((await (await call(m, "GET", OTHER)).json()) as any).batches[0].cursor).toBe(1);
   });
 

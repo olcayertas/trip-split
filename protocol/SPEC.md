@@ -578,13 +578,17 @@ The base URL is fixed in the app build. Each request sends `Authorization: Beare
 
 | Request | Body | Answer |
 |---|---|---|
-| `POST /v1/m/<mailboxId>/batches` | the blob, `Content-Type: application/octet-stream`, at most 320 KiB | `201 {"cursor": n}` |
-| `GET /v1/m/<mailboxId>/batches?after=<cursor>&limit=<1..100>` | — | `200 {"batches": [{"cursor": n, "blob": "<base64url>"}], "more": true\|false}` |
+| `POST /v1/m/<mailboxId>/batches` | the blob, `Content-Type: application/octet-stream`, at most 320 KiB | `201 {"cursor": n, "epoch": "<e>"}` |
+| `GET /v1/m/<mailboxId>/batches?after=<cursor>&limit=<1..100>` | — | `200 {"epoch": "<e>"\|null, "batches": [{"cursor": n, "blob": "<base64url>"}], "more": true\|false}` |
 
 - `cursor` is an integer that the relay gives to each stored blob. It starts at 1 and increases by 1
   in each mailbox. `after` defaults to 0 and `limit` to 50.
 - The first `POST` to an unknown mailbox creates it and stores `SHA-256(relayToken)`. After that, a
-  request with a different token gets `403`. A `GET` on an unknown mailbox gets `200` with no batches.
+  request with a different token gets `403`. A `GET` on an unknown mailbox gets `200` with no batches
+  and `"epoch": null`.
+- `epoch` is 32 lowercase hex characters (16 random bytes). The relay makes it when it creates a mailbox
+  and keeps it for the life of that mailbox. When the relay deletes a mailbox (§10.4.5) and a later
+  `POST` creates it again, the new mailbox has a new epoch and its cursors start again at 1.
 - Other errors: `400` for a bad mailbox id or a bad query, `413` for a body over the limit, `507` when
   the mailbox is full (§10.4.5), `429` for too many requests. The client tries again later on `429`,
   `5xx` and network errors, with a back-off from 5 s up to 5 min.
@@ -602,8 +606,8 @@ Details that the rules above leave open (the reference relay and `relay.json` fi
 
 #### 10.4.4 Sync with the relay
 
-The client keeps, for each group, `relayCursor` (the highest cursor it has read, starts at 0) and
-`relayVector`. `relayVector[author]` is the highest `n` such that the relay holds seq `1..n` of that
+The client keeps, for each group, `relayEpoch` (starts as null), `relayCursor` (the highest cursor it
+has read, starts at 0) and `relayVector`. `relayVector[author]` is the highest `n` such that the relay holds seq `1..n` of that
 author, as far as the client knows from the batches it read or sent. It starts empty.
 
 1. **Pull.** Read pages with `after = relayCursor` until `more` is false. For each blob, apply §10.4.2,
@@ -612,6 +616,14 @@ author, as far as the client knows from the batches it read or sent. It starts e
 2. **Push.** Take every op that the device holds with `seq > relayVector[author]` (§7 order). Send them
    in batches. After each `201`, add the ops of that batch to `relayVector`.
 3. Pull always runs before push. A new device then sends only what the relay does not have.
+4. **Epoch.** The cursor and the vector are true only for one epoch of the mailbox.
+   - On each `GET` answer: if `epoch` is not equal to `relayEpoch`, set `relayEpoch` to it. If
+     `relayCursor > 0` or `relayVector` is not empty, also set `relayCursor = 0`, empty `relayVector`, and
+     start the pull again with `after = 0`.
+   - On each `201` answer: if `relayEpoch` is null, set it to `epoch`. If `relayEpoch` is not null and
+     not equal to `epoch`, the mailbox was made again during this sync. Set `relayEpoch` to it, set
+     `relayCursor = 0`, empty `relayVector`, and run the whole sync (pull, then push) again, one time.
+   - Store `relayEpoch` in the same transaction as the cursor and the vector.
 
 The client runs a relay sync when a group screen opens, after the user saves a change, and every
 60 s while the app is in the foreground and online. The relay sync and the nearby sessions run side
@@ -630,5 +642,5 @@ From this it can tell how many devices use a group and when. It cannot read the 
 members, the amounts or any other op content. Anyone who has the invite can derive the token and
 read the mailbox; this is the same rule as for nearby sync (§10.3).
 
-Vectors: `relay.json` (mailbox id, token, batch key, two blobs with fixed nonces, one tampered blob, and
-a pull-then-push run against the reference relay).
+Vectors: `relay.json` (mailbox id, token, batch key, two blobs with fixed nonces, one tampered blob, a
+pull-then-push run against the reference relay, and a run where the mailbox expires between two syncs).

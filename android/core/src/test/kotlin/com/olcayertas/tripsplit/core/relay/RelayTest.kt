@@ -229,7 +229,7 @@ class RelaySyncTest {
         members(a, 2)
         val flaky = object : RelayApi by inner {
             var calls = 0
-            override suspend fun push(mailboxId: String, token: String, blob: ByteArray): Long {
+            override suspend fun push(mailboxId: String, token: String, blob: ByteArray): RelayPosted {
                 if (calls++ == 0) throw RelayException(RelayFailure.RETRY, "down")
                 return inner.push(mailboxId, token, blob)
             }
@@ -239,6 +239,43 @@ class RelaySyncTest {
         assertEquals(emptyMap(), a.store.relayState(GID).vector)
         assertEquals(3, sync.sync(GID).pushedOps)
         assertEquals(1, inner.blobCount(mailboxId(KEY)))
+    }
+
+    @Test
+    fun aMailboxMadeAgainDuringThePushRunsTheWholeSyncOnceMore() = runBlocking {
+        val inner = FakeRelay()
+        val (a, _) = pair()
+        members(a, 2)
+        RelaySync(a.device, inner).sync(GID)
+        val first = a.store.relayState(GID).epoch
+        a.device.append(GID, "member.add", OpBodies.memberAdd("00000000-0000-4000-8000-0000000000ff", "Late"))
+        // The relay deletes the mailbox right after the pull. The push then makes it again with a new epoch.
+        val expiring = object : RelayApi by inner {
+            var done = false
+            override suspend fun pull(mailboxId: String, token: String, after: Long, limit: Int): RelayPage =
+                inner.pull(mailboxId, token, after, limit).also { if (!done) { done = true; inner.expire(mailboxId) } }
+        }
+        val r = RelaySync(a.device, expiring).sync(GID)
+        val state = a.store.relayState(GID)
+        assertTrue(first != state.epoch)
+        // First pass sent the one new op (seq 4) into the empty mailbox. A vector does not jump over a gap, so the
+        // second pass read that op back without a vector entry, and sent all four ops. The relay ignores nothing:
+        // the op store of the other devices skips the copy.
+        assertEquals(5, r.pushedOps)
+        assertEquals(2, inner.blobCount(mailboxId(KEY)))
+        assertEquals(mapOf(IDA to 4L), state.vector)
+    }
+
+    @Test
+    fun theEpochIsKeptAcrossPullsAndNotSetByAnUnknownMailbox() = runBlocking {
+        val relay = FakeRelay()
+        val (a, b) = pair()
+        RelaySync(b.device, relay).sync(GID)
+        assertNull(b.store.relayState(GID).epoch)
+        RelaySync(a.device, relay).sync(GID)
+        RelaySync(b.device, relay).sync(GID)
+        assertEquals(a.store.relayState(GID).epoch, b.store.relayState(GID).epoch)
+        assertNotNull(b.store.relayState(GID).epoch)
     }
 
     @Test
@@ -271,11 +308,11 @@ class RelayCoordinatorTest {
     private class Spy : RelayApi {
         var failure: RelayFailure? = null
         var pulls = 0
-        override suspend fun push(mailboxId: String, token: String, blob: ByteArray): Long = 1
+        override suspend fun push(mailboxId: String, token: String, blob: ByteArray): RelayPosted = RelayPosted(1, "e")
         override suspend fun pull(mailboxId: String, token: String, after: Long, limit: Int): RelayPage {
             pulls++
             failure?.let { throw RelayException(it, "x") }
-            return RelayPage(emptyList(), false)
+            return RelayPage(emptyList(), false, null)
         }
     }
 

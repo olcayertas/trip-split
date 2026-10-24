@@ -1,5 +1,5 @@
 {
-  "description": "Internet relay (SPEC §10.4). Values derive from groupKey. A blob is nonce(12) || AES-256-GCM(batchKey, nonce, canonical {ops}, aad = mailboxId ASCII). tokenHashHex = SHA-256 of the 64 ASCII characters of the token. 'scenario' runs device A, B, C, A against an empty relay, one sync (pull, then push) each; the k-th POST of the whole scenario uses nonce k (12 bytes: 8 zero bytes, then k as u32 big-endian). 'requests' lists what the client must send, in order, with the relay answers. 'http' lists single-request checks against a fresh relay.",
+  "description": "Internet relay (SPEC §10.4). Values derive from groupKey. A blob is nonce(12) || AES-256-GCM(batchKey, nonce, canonical {ops}, aad = mailboxId ASCII). tokenHashHex = SHA-256 of the 64 ASCII characters of the token. 'scenario' runs device A, B, C, A against an empty relay, one sync (pull, then push) each; the k-th POST of the whole scenario uses nonce k (12 bytes: 8 zero bytes, then k as u32 big-endian). 'requests' lists what the client must send, in order, with the relay answers; the k-th mailbox that the relay makes has epoch k as 32 hex digits. 'http' lists single-request checks against a fresh relay.",
   "group": "00000000-0000-4000-8000-000000000001",
   "groupKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
   "mailboxId": "c0f8baf39df185762f4d897092500523",
@@ -156,6 +156,7 @@
             "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches?after=0&limit=50",
             "status": 200,
             "response": {
+              "epoch": null,
               "batches": [],
               "more": false
             }
@@ -166,12 +167,14 @@
             "status": 201,
             "bodyHex": "000000000000000000000001242130635c311979fbad70f51f7cac60d630267d59f3ac23a5253fb8d0d327953fe0dd620b35835e5d07be2b43a94c67517d188a1ac82e3a57eb33dc22c7d8717bddf488f3af6c4cbf0793c27c5b134b640529817e3b7026728277026f0674f9126afb8bc0199689d645ed49ea3bdfcbc4228b91b8303daedd29f59c7423b5c3280e0e3e88b9266c9e947396b26822bf26fb8eb3a816441545d40228ea47c87ff87768eedd9377650b66d4c94cb74d9fee1eeda5f58042ab1bb4b547209e4da79e1c3e20f7264cfa72c2fd65f18d4df02487d61281de950b6e3762b57dcb19924eacea2636108477f0282fe86f46a73db77510ac0783a9f4b7ac1593cfd51fd620ff6d6887ef619e496fb186624b5c267e00a4ba0a82bf2a227208df5d754b326dafd8fa8b0b8ff25d124ee8b06333d08a8b4d3d4c9ae706ac8f27e6956159b31df9a6e4a0e6aba7986825fb02c761ba643f125ca9b2162546262735d927c28eb4fe2f1073096fa7390868c4b3d4866f40441a916e2c5de94a5d9341691d0d03f2d1c5c835f2f2285e35b5d85ba09c903336c6d298e71dd24ecb722cbfb8f52cad6afc78c624576604fce9307e4f25fbdadac82d2ae63267719eca5a08b8c3a0ed5649a17239652e99921094b94788e4484a5c801b54f69ca79644a67d77df463adcee16924adc47c16062108c1682294964f88797185a525e90a13ff4f235d6f6bb8b1d14d3d89375ac3cae148bf039c51f90af4c75d6a86ed53eac5e6ffdcec600e73594f744afbd3843177b6469f85b417ef8a85566ca56cad81ba1627220c5ae731920d679e7229b59f0a6631b4a8398c90956063f72e489fea427a11466dea3206dca0c972852ab12784fec7f4a2626d3a341f4ffd637bddf2c38af3af023f277e26f0b442e9be2031adf99a8f81e398c5157f6565f0a935aae24f203063b6c7e070fd3cabff807763029f6fb6f139ed0f4f422764f5f11d88b5008a7d2a3e7120f0e70dc8e16570bb3b3db59dd9639c132fb1d80ab5acb4a67f483957294035c4059c29880d5f8c598ef8392d0b28a2527f1826751fb8bacc2943dc731027818f6f6fc86a855ac096b118ddb4a4b0e8fb15b377e4292a0913b923c27d5a7b1542d6663c508f9b445f83f4ade230bc344bfcaa82974db3e7fcb35360d960ef483302635145b8ddd8cd5771f26da2047379b9b1a43ebc144579519780ab5825b39070fb296ca957061e8a668ee870637276d29706652e521b84463c7b77ec8f762ae777dc09507785212092b23e24b7b7a905709e0c64fd85c3be5b692c1a6a9679a3de45df60c89665ef6744aeb415a614375109b72df123d1955fbde58d3b8106785c57ce53dd139e015dd86d1b5c458a82d5e4fb9980f49799ac299af9d7b997101e2778bef2a4f65e5d565002fac4cb7572ce03971359d3c1e108f1babaf3a2bf3af5f086799550f231a532382418122d9458aea28a36e5db7f9e7ba72fc8aec96973cdf66f56073286f68fbd783b2c0fc6029d18a6a43b2c53442035220722f1abce0c1d1cdf81902268412ddb779a740063fd8c957b8be92c98df9f03171cafdcc598e99b664d01cdc073672a616b4c682e8e26bc5828c5323fe09634e435779bd263217c254c93159fb00e3db501033e3dd4808b1fc7c780b3a77927eeca0a8b9c40cae6f83c21f64bf482ca9a472947615d0c6b40a4ac8554bbcee6cdc9422fa31d0cc05d63e86eed38071cb95b0ec226f238b70fcbf2340425c8a05500f36b604edf0a58f1d6ef4278cde85ac93242d30e094775feb801f2ab2be289a07a5e5817594e2d2c0c971c4a148d19118394744633e1ebadf187c87a0d562165477c9175db6602ae29ae656301b7c969939176723f80135c9f5adfa38b6cbd3b8086d3d5c1c2d5aa935e56987865cea67d06de1b85589e54fe10a88d301d402",
             "response": {
-              "cursor": 1
+              "cursor": 1,
+              "epoch": "00000000000000000000000000000001"
             }
           }
         ],
         "stored": 0,
         "sent": 3,
+        "relayEpoch": "00000000000000000000000000000001",
         "relayCursor": 0,
         "relayVector": {
           "aaaaaaaa-0000-4000-8000-000000000001": 3
@@ -188,6 +191,7 @@
             "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches?after=0&limit=50",
             "status": 200,
             "response": {
+              "epoch": "00000000000000000000000000000001",
               "batches": [
                 {
                   "cursor": 1,
@@ -203,12 +207,14 @@
             "status": 201,
             "bodyHex": "000000000000000000000002d822c141a7e3ef54435f2bb5fd21d7bdd7f028971aa0b692d97c1d88556b2b7fc50f4584a18546b41e35baa6ae06f79a9cc6fab047a6ac516c84cbc4d3b3164684e3d8b1ac71a8540d53a003094070b88f1477bde1f865076f07b9582b28f2010ba50a0a5b171225931435cbd87f7e0547763e2b0fc018269d044ef678631aec73c28840ecc1e7de141d9fc591ffb77778a98a9716e58deda9be37b22b8f2a9d4efe8eb56a0e617577025f6f722b5a30e2cf65fbc60820bd6cbe5bb9cf20abf3e7446ac094f51e6f6042b36ba6175ae901e177a6ba122f221480d7fc2936164027b64d8bcca01f79addfe7973d3f4555b6b8181bd8089bfb6d7ddab02456048714615479d9c4757604168e4609b28ba29d750f34bd1d2f14aae893f46ae7fd23be35301992c54f42626a083be75dbf62a392764c8b67005aa0158efd2bdca836104dae125c5ca69d834aa40f2fb1a528ecba5c0105309c119bd00ed8d9df58aefcccdd8383716c3bb82432050395bae08744a4ca012a6edd1a9de74fdfb8c68ad5234a3700a48ce28cb47d0eb425af2d7dc1add10f85f3a013a2e49de9ec8f007868618bff7bacaae288ad2b20915bc7680ca51fd0edae94055704116e015f646ad34aa7b390d5f2a4eabe913f6403e65944eabfb62db03a74228312462d6e34a3c811b4f67e7aef3d387d335ffe8e98b250528b8e8baf6dca5a4c3c2df89072236d43301b2a08cf1f8af19e9f0297a07d88e9759de45cba455091bd61b59b9561f17ac5d72e03cf40b5ee67600a257aab1b6b0d9c1711f66cc9ca3c1dc0760192fd857e4cb2d038dd3fea91a5b152def84a5f130f2e4a8404408a5fb01272b3a57c1bbc6d275b244baec14c3a387e929e596c915bbdc37c6674e4819428f3be6bd45db5e5b4b670a8793cf71546104a00a745a15c07a06af2b4e64b0e2ac2b054be503d0ac1c1cdaa7650e2c8604332e43b750aa5db7bf50f6bf4e78f8c575ec54b3468fb457a3095f9cbfed09e7890ebeaafaaaa2330905d6d21711c7eeacf314d5155eb325157a5cab7ce0be1ce261fe8be2ec8b4f59603ff9c4d0cc925633f094d772ed47349606c146eff1f321638cd4fa2d5a6931d0979c5376da0985900448973fb511b6861428d99b1bd69eac4f3475876df31018da99678a36e444bf5260cc799875560c69f0c42dace13fde11847c3d94e5f7b9935a9a7e658a708cb3b609bfa7f155094bb75481f457ec0b817014f79d05afbf9cfcfa79d59d10eb0c76bcbd0ac453acf2cbb62185f4afd6765c760db82bcc6c8b42e396dbd186d7c1cbb1f7cdb1d1dba659b91ad054fd205a700b69123a6f821b78ef5049224a9e56c130b678adc4464f6302a9f",
             "response": {
-              "cursor": 2
+              "cursor": 2,
+              "epoch": "00000000000000000000000000000001"
             }
           }
         ],
         "stored": 1,
         "sent": 2,
+        "relayEpoch": "00000000000000000000000000000001",
         "relayCursor": 1,
         "relayVector": {
           "aaaaaaaa-0000-4000-8000-000000000001": 3,
@@ -226,6 +232,7 @@
             "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches?after=0&limit=1",
             "status": 200,
             "response": {
+              "epoch": "00000000000000000000000000000001",
               "batches": [
                 {
                   "cursor": 1,
@@ -240,6 +247,7 @@
             "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches?after=1&limit=1",
             "status": 200,
             "response": {
+              "epoch": "00000000000000000000000000000001",
               "batches": [
                 {
                   "cursor": 2,
@@ -252,6 +260,7 @@
         ],
         "stored": 5,
         "sent": 0,
+        "relayEpoch": "00000000000000000000000000000001",
         "relayCursor": 2,
         "relayVector": {
           "aaaaaaaa-0000-4000-8000-000000000001": 3,
@@ -269,6 +278,7 @@
             "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches?after=0&limit=50",
             "status": 200,
             "response": {
+              "epoch": "00000000000000000000000000000001",
               "batches": [
                 {
                   "cursor": 1,
@@ -285,6 +295,7 @@
         ],
         "stored": 2,
         "sent": 0,
+        "relayEpoch": "00000000000000000000000000000001",
         "relayCursor": 2,
         "relayVector": {
           "aaaaaaaa-0000-4000-8000-000000000001": 3,
@@ -307,6 +318,182 @@
       "30000000-0000-4000-8000-000000000003": 100
     }
   },
+  "expiryScenario": {
+    "description": "The same devices. Before step 2 (B) the relay deletes the mailbox, so B makes it again with a new epoch. Step 3 (A) has a stale cursor and vector: it must reset, read from after=0, and send its ops again. The k-th mailbox a relay makes has epoch k as 32 hex digits. Nonces count from 1 again in this run.",
+    "expireBeforeStep": 1,
+    "steps": [
+      {
+        "device": "A",
+        "pageLimit": 50,
+        "heldBefore": 3,
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches?after=0&limit=50",
+            "status": 200,
+            "response": {
+              "epoch": null,
+              "batches": [],
+              "more": false
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches",
+            "status": 201,
+            "bodyHex": "000000000000000000000001242130635c311979fbad70f51f7cac60d630267d59f3ac23a5253fb8d0d327953fe0dd620b35835e5d07be2b43a94c67517d188a1ac82e3a57eb33dc22c7d8717bddf488f3af6c4cbf0793c27c5b134b640529817e3b7026728277026f0674f9126afb8bc0199689d645ed49ea3bdfcbc4228b91b8303daedd29f59c7423b5c3280e0e3e88b9266c9e947396b26822bf26fb8eb3a816441545d40228ea47c87ff87768eedd9377650b66d4c94cb74d9fee1eeda5f58042ab1bb4b547209e4da79e1c3e20f7264cfa72c2fd65f18d4df02487d61281de950b6e3762b57dcb19924eacea2636108477f0282fe86f46a73db77510ac0783a9f4b7ac1593cfd51fd620ff6d6887ef619e496fb186624b5c267e00a4ba0a82bf2a227208df5d754b326dafd8fa8b0b8ff25d124ee8b06333d08a8b4d3d4c9ae706ac8f27e6956159b31df9a6e4a0e6aba7986825fb02c761ba643f125ca9b2162546262735d927c28eb4fe2f1073096fa7390868c4b3d4866f40441a916e2c5de94a5d9341691d0d03f2d1c5c835f2f2285e35b5d85ba09c903336c6d298e71dd24ecb722cbfb8f52cad6afc78c624576604fce9307e4f25fbdadac82d2ae63267719eca5a08b8c3a0ed5649a17239652e99921094b94788e4484a5c801b54f69ca79644a67d77df463adcee16924adc47c16062108c1682294964f88797185a525e90a13ff4f235d6f6bb8b1d14d3d89375ac3cae148bf039c51f90af4c75d6a86ed53eac5e6ffdcec600e73594f744afbd3843177b6469f85b417ef8a85566ca56cad81ba1627220c5ae731920d679e7229b59f0a6631b4a8398c90956063f72e489fea427a11466dea3206dca0c972852ab12784fec7f4a2626d3a341f4ffd637bddf2c38af3af023f277e26f0b442e9be2031adf99a8f81e398c5157f6565f0a935aae24f203063b6c7e070fd3cabff807763029f6fb6f139ed0f4f422764f5f11d88b5008a7d2a3e7120f0e70dc8e16570bb3b3db59dd9639c132fb1d80ab5acb4a67f483957294035c4059c29880d5f8c598ef8392d0b28a2527f1826751fb8bacc2943dc731027818f6f6fc86a855ac096b118ddb4a4b0e8fb15b377e4292a0913b923c27d5a7b1542d6663c508f9b445f83f4ade230bc344bfcaa82974db3e7fcb35360d960ef483302635145b8ddd8cd5771f26da2047379b9b1a43ebc144579519780ab5825b39070fb296ca957061e8a668ee870637276d29706652e521b84463c7b77ec8f762ae777dc09507785212092b23e24b7b7a905709e0c64fd85c3be5b692c1a6a9679a3de45df60c89665ef6744aeb415a614375109b72df123d1955fbde58d3b8106785c57ce53dd139e015dd86d1b5c458a82d5e4fb9980f49799ac299af9d7b997101e2778bef2a4f65e5d565002fac4cb7572ce03971359d3c1e108f1babaf3a2bf3af5f086799550f231a532382418122d9458aea28a36e5db7f9e7ba72fc8aec96973cdf66f56073286f68fbd783b2c0fc6029d18a6a43b2c53442035220722f1abce0c1d1cdf81902268412ddb779a740063fd8c957b8be92c98df9f03171cafdcc598e99b664d01cdc073672a616b4c682e8e26bc5828c5323fe09634e435779bd263217c254c93159fb00e3db501033e3dd4808b1fc7c780b3a77927eeca0a8b9c40cae6f83c21f64bf482ca9a472947615d0c6b40a4ac8554bbcee6cdc9422fa31d0cc05d63e86eed38071cb95b0ec226f238b70fcbf2340425c8a05500f36b604edf0a58f1d6ef4278cde85ac93242d30e094775feb801f2ab2be289a07a5e5817594e2d2c0c971c4a148d19118394744633e1ebadf187c87a0d562165477c9175db6602ae29ae656301b7c969939176723f80135c9f5adfa38b6cbd3b8086d3d5c1c2d5aa935e56987865cea67d06de1b85589e54fe10a88d301d402",
+            "response": {
+              "cursor": 1,
+              "epoch": "00000000000000000000000000000001"
+            }
+          }
+        ],
+        "stored": 0,
+        "sent": 3,
+        "relayEpoch": "00000000000000000000000000000001",
+        "relayCursor": 0,
+        "relayVector": {
+          "aaaaaaaa-0000-4000-8000-000000000001": 3
+        },
+        "heldAfter": 3
+      },
+      {
+        "device": "B",
+        "pageLimit": 50,
+        "heldBefore": 4,
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches?after=0&limit=50",
+            "status": 200,
+            "response": {
+              "epoch": null,
+              "batches": [],
+              "more": false
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches",
+            "status": 201,
+            "bodyHex": "000000000000000000000002d822c141a7e3ef54435f2bb5fd21d7bdd7f0289419a3b591da7f1e88556b2b7fc50f4584a18546b41e35baa6ae06f79a9cc6fab047a6af516c84cbc4d3b3164684e3d7b5b2768e533645e757480a62b29d6112dff3f977542d52f518746a8f495ef75f483f43002f811535cbd87f7e0544792239519158778f0e5c98213d08a172d0df02b384a7cc1e0f9fc590edab652bebc2c652bacf8efce362a03c955bc117f192a7345f3c2065084d14236a1978afcc7de98e182aad3ea442a2d924eca8ab55719e86a319693311b76df70a5dba08b438a5ef41286e1483d0fc3733471271bf45ddcff31879aa9fae8d6469030ff6b55e1d8a0f99f22e68cabb2b56438e066356788cc6277556478c400ab583a387760e3dee097914fdbdc9f769e0b526bf3c645197c64f402a640c3ae211eb33a696755e97755806f30596f3399ffc700446ad0f4e18efddd658ae0072e4f87aa4a913010035df5cd88b1cd2d89259e1ee9d98dad32e2e29af36605751c7e8b2d516b9ca003872d25dc8a65dc8b1da9891770a6212ae9eb5ceeb384eaa74ff643ed7a7975a85bff90bf0f8c5f7a98107752234dbbb2ee1afa1c5ee2e20845fc8621ea71fcfefb39505570e117c1d503122931ff9f0c5aca6b6e0add6237651b90d0df8a8fd3fed6f3474d6503f64743eb1ca0cb4f67e7aef3d257d335ffe918eae420fc9d8dee67fdd115e6d70a7d52c67101a6e467a06d743dbacd79f5bc09376281873c6bb4aba6777acea3db5d3d625a468cfc52f11d34ff6ae3b39533370e0092b50c14544a92fdbc0570fc1760192fd857f5eb3c2608c7caf87afa354c3a1485740107a1bd601168356e54473bba03d56a93d740a2c4aad9319266d7992984c60c453bcd7213775e09dc779f2be6d860cb2b6b3b076eb4722ec1d1a560300f50ba70f48e336e0f8ac511d6892e900cc192f00d2dfcdaa7650ff99310f63b56a2446bcdb7bf5127ef0e78f914a56c54b3475fb457a3095fad9e2c2da21d5a5a3afe3ed0573de0a332178492ce89f641a4c12bc720415bb9be39a19fdc1600de2bf7ed0ffe7c75bb3c4124ec62f716d5b1f257c86211b7d6d0672ed5a675560df58b8dcf597515f79cc363ba9995c07428e78e04a09386a10c78abea32db490f8475c32af614280bdc670a0674542f77345cfc8d3502f93ca0947cf9010fae30146c7cb524d23c566bbadf45bb515de6330c4ae6d1f42e7ea2b5e4f596c97fa55165d39881aa9ab9dd2a79d59d10eb4c76bcbd0a0453acf2cb362185f57fd6765c760db80aedadaf77a6a63a542202d00e0553b9d1f5be82988c1f74f4bc500f302a38b62b3ee2de7c39f1ab077a3d95301ca2a4acddf07949b4b70047dc1dcee05465d8708996564d70f39f1f7fd403c5b0351f125cf5bf12cd4fee50dc3f1548c384f67b5ff7c3d4a3eebd80b0e6e1d44687cade0085d3887fe2f988d39d8497cf8f40fa128e549cd162341c42a8b3604905147997d6c68ca075f427bb5efa8371f4f5bfc8da6fe2c6521964eff6eb74334a806d2405b1025be3a08911f4056aef9bf1aa51464c72cce735e917041ffd3d0055dfa9725139fde39615548444c1758e2bb03d97e02581683dea548844d020a9d3e57483b2814c8564c21e6006a0807c794dfea33ea315ab6ed2046834491b57948fd8cf46e1a45480911113895d434d8dd3358c6ac10748e5924c6e4da7df2a9fa6eec0a016ecc56d1ac44e3ed3fd4794ba63003eb479dad5424023ab635eed959cb37a097450cb08584e4d4f69c9a5fa440e7b44a913f511db1d68beefcae79661661783d1b88dc285a65edbe0d68c0123af594264ee80bbd7615cafe930e47ff89cb8ca1ca46c6cbef861cd98c914eb5bb51295da29fef5b319e2d3733748e8b50ae5de2e54e9b8bf6c9424e4b32665e6f40ad0e490fb76bb9ff5c1fe956ccdc3ccb5d9bf9633f8dfc8a97009e6de8a8f175db5507cbf6ef33f5b582fe86677834d5501e992eba80b9645e0147fb7bf5a0e984b9f03c3fe1b4be6e1324525217ca58ed1872fb2b73dda34be92260cafcaa7f239f9e5d9165757e5e6ae666b273b76899f0975fcb1c525e850c6d5701015bc58b4952b5f6a08e1c80276a3841e5091aa3144247421ee338002113fb302026c7c3f82ca9fbdb3a464f1f36236eba3d359fe1759fdcfff2be483760ad86ba22a83681214d673def5f264a5508d228f09a3b3011dbbc2c3c7d005b6f74535a002e2629f5181b10a8e66e67692183d6810accce9ee87f43a38b56079b403cea233c159f1666d9a678193e335ef39907dda0c8f4022657a1458d667b6da4fcd9b6b15ef0ce758e85cbe5211acaa2c36b261de065ff3cce1373288d480363409349bb4c2c35d173f161015c06df8d344a1c2a392ddef1d2d899f05dcbdabe2cc3031f1af4",
+            "response": {
+              "cursor": 1,
+              "epoch": "00000000000000000000000000000002"
+            }
+          }
+        ],
+        "stored": 0,
+        "sent": 4,
+        "relayEpoch": "00000000000000000000000000000002",
+        "relayCursor": 0,
+        "relayVector": {
+          "aaaaaaaa-0000-4000-8000-000000000001": 2,
+          "bbbbbbbb-0000-4000-8000-000000000002": 2
+        },
+        "heldAfter": 4
+      },
+      {
+        "device": "A",
+        "pageLimit": 50,
+        "heldBefore": 3,
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches?after=0&limit=50",
+            "status": 200,
+            "response": {
+              "epoch": "00000000000000000000000000000002",
+              "batches": [
+                {
+                  "cursor": 1,
+                  "blob": "AAAAAAAAAAAAAAAC2CLBQafj71RDXyu1_SHXvdfwKJQZo7WR2n8eiFVrK3_FD0WEoYVGtB41uqauBveanMb6sEemr1FshMvE07MWRoTj17Wydo5TNkXnV0gKYrKdYRLf8_l3VC1S9Rh0ao9JXvdfSD9DAC-BFTXL2H9-BUR5IjlRkVh3jw5cmCE9CKFy0N8Cs4SnzB4Pn8WQ7atlK-vCxlK6z47842KgPJVbwRfxkqc0XzwgZQhNFCNqGXivzH3pjhgqrT6kQqLZJOyoq1VxnoajGWkzEbdt9wpdugi0OKXvQShuFIPQ_DczRxJxv0Xdz_MYeaqfro1kaQMP9rVeHYoPmfIuaMq7K1ZDjgZjVniMxid1VkeMQAq1g6OHdg497gl5FP29yfdp4LUmvzxkUZfGT0AqZAw64hHrM6aWdV6XdVgG8wWW8zmf_HAERq0PThjv3dZYrgBy5Ph6pKkTAQA131zYixzS2JJZ4e6dmNrTLi4przZgV1HH6LLVFrnKADhy0l3Ipl3IsdqYkXcKYhKunrXO6zhOqnT_ZD7Xp5dahb_5C_D4xfepgQd1IjTbuy7hr6HF7i4ghF_IYh6nH8_vs5UFVw4RfB1QMSKTH_nwxaymtuCt1iN2UbkNDfio_T_tbzR01lA_ZHQ-scoMtPZ-eu89JX0zX_6Rjq5CD8nY3uZ_3RFebXCn1SxnEBpuRnoG10PbrNefW8CTdigYc8a7Srpnd6zqPbXT1iWkaM_FLxHTT_auOzlTM3DgCStQwUVEqS_bwFcPwXYBkv2Ff16zwmCMfK-Hr6NUw6FIV0AQehvWARaDVuVEc7ugPVapPXQKLEqtkxkmbXmSmExgxFO81yE3deCdx3nyvm2GDLK2s7B260ci7B0aVgMA9QunD0jjNuD4rFEdaJLpAMwZLwDS382qdlD_mTEPY7VqJEa823v1En7w54-RSlbFSzR1-0V6MJX62eLC2iHVpaOv4-0Fc94KMyF4SSzon2QaTBK8cgQVu5vjmhn9wWAN4r9-0P_nx1uzxBJOxi9xbVsfJXyGIRt9bQZy7VpnVWDfWLjc9ZdRX3nMNjupmVwHQo544EoJOGoQx4q-oy20kPhHXDKvYUKAvcZwoGdFQvdzRc_I01Avk8oJR8-QEPrjAUbHy1JNI8Vmu630W7UV3mMwxK5tH0Ln6iteT1lsl_pVFl05iBqpq53Sp51Z0Q60x2vL0KBFOs8ss2IYX1f9Z2XHYNuArtra93pqY6VCIC0A4FU7nR9b6CmIwfdPS8UA8wKji2Kz7i3nw58asHej2VMByipKzd8HlJtLcAR9wdzuBUZdhwiZZWTXDznx9_1APFsDUfElz1vxLNT-5Q3D8VSMOE9ntf98PUo-69gLDm4dRGh8reAIXTiH_i-YjTnYSXz49A-hKOVJzRYjQcQqizYEkFFHmX1saMoHX0J7te-oNx9PW_yNpv4sZSGWTv9ut0M0qAbSQFsQJb46CJEfQFau-b8apRRkxyzOc16RcEH_09AFXfqXJROf3jlhVUhETBdY4rsD2X4CWBaD3qVIhE0CCp0-V0g7KBTIVkwh5gBqCAfHlN_qM-oxWrbtIEaDRJG1eUj9jPRuGkVICREROJXUNNjdM1jGrBB0jlkkxuTaffKp-m7sCgFuzFbRrETj7T_UeUumMAPrR52tVCQCOrY17tlZyzegl0UMsIWE5NT2nJpfpEDntEqRP1EdsdaL7vyueWYWYXg9G4jcKFpl7b4NaMASOvWUJk7oC712Fcr-kw5H_4nLjKHKRsbL74Yc2YyRTrW7USldop_vWzGeLTczdI6LUK5d4uVOm4v2yUJOSzJmXm9ArQ5JD7druf9cH-lWzNw8y12b-WM_jfyKlwCebeio8XXbVQfL9u8z9bWC_oZneDTVUB6ZLrqAuWReAUf7e_Wg6YS58Dw_4bS-bhMkUlIXyljtGHL7K3Pdo0vpImDK_Kp_I5-eXZFldX5eauZmsnO3aJnwl1_LHFJehQxtVwEBW8WLSVK19qCOHIAnajhB5QkaoxRCR0Ie4zgAIRP7MCAmx8P4LKn72zpGTx82I266PTWf4XWf3P_yvkg3YK2GuiKoNoEhTWc9718mSlUI0ijwmjswEdu8LDx9AFtvdFNaAC4mKfUYGxCo5m5naSGD1oEKzM6e6H9Do4tWB5tAPOojPBWfFmbZpngZPjNe85kH3aDI9AImV6FFjWZ7baT82baxXvDOdY6Fy-UhGsqiw2smHeBl_zzOE3MojUgDY0CTSbtMLDXRc_FhAVwG3400ShwqOS3e8dLYmfBdy9q-LMMDHxr0"
+                }
+              ],
+              "more": false
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches?after=0&limit=50",
+            "status": 200,
+            "response": {
+              "epoch": "00000000000000000000000000000002",
+              "batches": [
+                {
+                  "cursor": 1,
+                  "blob": "AAAAAAAAAAAAAAAC2CLBQafj71RDXyu1_SHXvdfwKJQZo7WR2n8eiFVrK3_FD0WEoYVGtB41uqauBveanMb6sEemr1FshMvE07MWRoTj17Wydo5TNkXnV0gKYrKdYRLf8_l3VC1S9Rh0ao9JXvdfSD9DAC-BFTXL2H9-BUR5IjlRkVh3jw5cmCE9CKFy0N8Cs4SnzB4Pn8WQ7atlK-vCxlK6z47842KgPJVbwRfxkqc0XzwgZQhNFCNqGXivzH3pjhgqrT6kQqLZJOyoq1VxnoajGWkzEbdt9wpdugi0OKXvQShuFIPQ_DczRxJxv0Xdz_MYeaqfro1kaQMP9rVeHYoPmfIuaMq7K1ZDjgZjVniMxid1VkeMQAq1g6OHdg497gl5FP29yfdp4LUmvzxkUZfGT0AqZAw64hHrM6aWdV6XdVgG8wWW8zmf_HAERq0PThjv3dZYrgBy5Ph6pKkTAQA131zYixzS2JJZ4e6dmNrTLi4przZgV1HH6LLVFrnKADhy0l3Ipl3IsdqYkXcKYhKunrXO6zhOqnT_ZD7Xp5dahb_5C_D4xfepgQd1IjTbuy7hr6HF7i4ghF_IYh6nH8_vs5UFVw4RfB1QMSKTH_nwxaymtuCt1iN2UbkNDfio_T_tbzR01lA_ZHQ-scoMtPZ-eu89JX0zX_6Rjq5CD8nY3uZ_3RFebXCn1SxnEBpuRnoG10PbrNefW8CTdigYc8a7Srpnd6zqPbXT1iWkaM_FLxHTT_auOzlTM3DgCStQwUVEqS_bwFcPwXYBkv2Ff16zwmCMfK-Hr6NUw6FIV0AQehvWARaDVuVEc7ugPVapPXQKLEqtkxkmbXmSmExgxFO81yE3deCdx3nyvm2GDLK2s7B260ci7B0aVgMA9QunD0jjNuD4rFEdaJLpAMwZLwDS382qdlD_mTEPY7VqJEa823v1En7w54-RSlbFSzR1-0V6MJX62eLC2iHVpaOv4-0Fc94KMyF4SSzon2QaTBK8cgQVu5vjmhn9wWAN4r9-0P_nx1uzxBJOxi9xbVsfJXyGIRt9bQZy7VpnVWDfWLjc9ZdRX3nMNjupmVwHQo544EoJOGoQx4q-oy20kPhHXDKvYUKAvcZwoGdFQvdzRc_I01Avk8oJR8-QEPrjAUbHy1JNI8Vmu630W7UV3mMwxK5tH0Ln6iteT1lsl_pVFl05iBqpq53Sp51Z0Q60x2vL0KBFOs8ss2IYX1f9Z2XHYNuArtra93pqY6VCIC0A4FU7nR9b6CmIwfdPS8UA8wKji2Kz7i3nw58asHej2VMByipKzd8HlJtLcAR9wdzuBUZdhwiZZWTXDznx9_1APFsDUfElz1vxLNT-5Q3D8VSMOE9ntf98PUo-69gLDm4dRGh8reAIXTiH_i-YjTnYSXz49A-hKOVJzRYjQcQqizYEkFFHmX1saMoHX0J7te-oNx9PW_yNpv4sZSGWTv9ut0M0qAbSQFsQJb46CJEfQFau-b8apRRkxyzOc16RcEH_09AFXfqXJROf3jlhVUhETBdY4rsD2X4CWBaD3qVIhE0CCp0-V0g7KBTIVkwh5gBqCAfHlN_qM-oxWrbtIEaDRJG1eUj9jPRuGkVICREROJXUNNjdM1jGrBB0jlkkxuTaffKp-m7sCgFuzFbRrETj7T_UeUumMAPrR52tVCQCOrY17tlZyzegl0UMsIWE5NT2nJpfpEDntEqRP1EdsdaL7vyueWYWYXg9G4jcKFpl7b4NaMASOvWUJk7oC712Fcr-kw5H_4nLjKHKRsbL74Yc2YyRTrW7USldop_vWzGeLTczdI6LUK5d4uVOm4v2yUJOSzJmXm9ArQ5JD7druf9cH-lWzNw8y12b-WM_jfyKlwCebeio8XXbVQfL9u8z9bWC_oZneDTVUB6ZLrqAuWReAUf7e_Wg6YS58Dw_4bS-bhMkUlIXyljtGHL7K3Pdo0vpImDK_Kp_I5-eXZFldX5eauZmsnO3aJnwl1_LHFJehQxtVwEBW8WLSVK19qCOHIAnajhB5QkaoxRCR0Ie4zgAIRP7MCAmx8P4LKn72zpGTx82I266PTWf4XWf3P_yvkg3YK2GuiKoNoEhTWc9718mSlUI0ijwmjswEdu8LDx9AFtvdFNaAC4mKfUYGxCo5m5naSGD1oEKzM6e6H9Do4tWB5tAPOojPBWfFmbZpngZPjNe85kH3aDI9AImV6FFjWZ7baT82baxXvDOdY6Fy-UhGsqiw2smHeBl_zzOE3MojUgDY0CTSbtMLDXRc_FhAVwG3400ShwqOS3e8dLYmfBdy9q-LMMDHxr0"
+                }
+              ],
+              "more": false
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches",
+            "status": 201,
+            "bodyHex": "0000000000000000000000032c3ab8dcf7ef9153650ca4bbc5d0fc444a1d33c2d3030d6e0af26a6ede7d5e6e1e47d913a56f5d9f36e4140e635a830bef19e64ac74f57c5d58cdf741c660d144b8d2ed37109d9511ec3f057d95d5f232afd5f1c5cc3305b8eb9bd2359315a4e8fa7fa2a596e5eb06ac02793c1c5d876faa3b23e7d18904140c411dc9cfc400ac846703e606fc87961fd4f66fcc14a1115cc4fc572e7a619462b2a50b562fb1788a80c389a6e4b0203b75b94fadcf4efc63ba8ebf492401a898fef449648c34d72542720ba9a242ca29d5d390c807b47d3744af59d5180dd04b6d6cb7a694a82bc95eaf9062b642e07c73278f94b47fe24594426d4434b2a0912c4f0b4ac5983150f86368df26f499f15da862ebcf549f7b4cdfda62f80e190b4e364c4fbe308e658e017611509302f5fb0e91c55c3aa17c64d280f71fe5d651659716d9721c35a636f53b74efae846658b07c6d433b6449276a9268ab2e3e7e2ed61c437209d1592ea851293b3715d2d7c0fd4d6c983c6164a659db047a8041a3865976a42d4095a1ce571aae7bb054bdbc390198f55e03390fe46de42066b0625e4e8d0ec9c5339442215627b056cdae024db87cead8661c04049b2262e6114534b475c8c1a418f7f75fcead0417b159503e1b2169578cde84f07560703ddcbd59b02bb79458e690a701a6094968d9e5ffc390efeee10d0c742677b41d8ca76f8609c3e09604367761e864a5ac73353888333e993ae8df3e20618c9a40da1c287c523c77de19ebbd45207956c43ffced9ca0fb8017c1a7bdd8ba6556a398cbc8cb54be0233ad127b8e14ff045f1c440df6abb58d37b1cf5a94517ed58840e09633aab70a9a6f13db3f6280e632fec8a0cec86842ec0f08554aa1243",
+            "response": {
+              "cursor": 2,
+              "epoch": "00000000000000000000000000000002"
+            }
+          }
+        ],
+        "stored": 2,
+        "sent": 1,
+        "relayEpoch": "00000000000000000000000000000002",
+        "relayCursor": 1,
+        "relayVector": {
+          "aaaaaaaa-0000-4000-8000-000000000001": 3,
+          "bbbbbbbb-0000-4000-8000-000000000002": 2
+        },
+        "heldAfter": 5
+      },
+      {
+        "device": "C",
+        "pageLimit": 50,
+        "heldBefore": 0,
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/v1/m/c0f8baf39df185762f4d897092500523/batches?after=0&limit=50",
+            "status": 200,
+            "response": {
+              "epoch": "00000000000000000000000000000002",
+              "batches": [
+                {
+                  "cursor": 1,
+                  "blob": "AAAAAAAAAAAAAAAC2CLBQafj71RDXyu1_SHXvdfwKJQZo7WR2n8eiFVrK3_FD0WEoYVGtB41uqauBveanMb6sEemr1FshMvE07MWRoTj17Wydo5TNkXnV0gKYrKdYRLf8_l3VC1S9Rh0ao9JXvdfSD9DAC-BFTXL2H9-BUR5IjlRkVh3jw5cmCE9CKFy0N8Cs4SnzB4Pn8WQ7atlK-vCxlK6z47842KgPJVbwRfxkqc0XzwgZQhNFCNqGXivzH3pjhgqrT6kQqLZJOyoq1VxnoajGWkzEbdt9wpdugi0OKXvQShuFIPQ_DczRxJxv0Xdz_MYeaqfro1kaQMP9rVeHYoPmfIuaMq7K1ZDjgZjVniMxid1VkeMQAq1g6OHdg497gl5FP29yfdp4LUmvzxkUZfGT0AqZAw64hHrM6aWdV6XdVgG8wWW8zmf_HAERq0PThjv3dZYrgBy5Ph6pKkTAQA131zYixzS2JJZ4e6dmNrTLi4przZgV1HH6LLVFrnKADhy0l3Ipl3IsdqYkXcKYhKunrXO6zhOqnT_ZD7Xp5dahb_5C_D4xfepgQd1IjTbuy7hr6HF7i4ghF_IYh6nH8_vs5UFVw4RfB1QMSKTH_nwxaymtuCt1iN2UbkNDfio_T_tbzR01lA_ZHQ-scoMtPZ-eu89JX0zX_6Rjq5CD8nY3uZ_3RFebXCn1SxnEBpuRnoG10PbrNefW8CTdigYc8a7Srpnd6zqPbXT1iWkaM_FLxHTT_auOzlTM3DgCStQwUVEqS_bwFcPwXYBkv2Ff16zwmCMfK-Hr6NUw6FIV0AQehvWARaDVuVEc7ugPVapPXQKLEqtkxkmbXmSmExgxFO81yE3deCdx3nyvm2GDLK2s7B260ci7B0aVgMA9QunD0jjNuD4rFEdaJLpAMwZLwDS382qdlD_mTEPY7VqJEa823v1En7w54-RSlbFSzR1-0V6MJX62eLC2iHVpaOv4-0Fc94KMyF4SSzon2QaTBK8cgQVu5vjmhn9wWAN4r9-0P_nx1uzxBJOxi9xbVsfJXyGIRt9bQZy7VpnVWDfWLjc9ZdRX3nMNjupmVwHQo544EoJOGoQx4q-oy20kPhHXDKvYUKAvcZwoGdFQvdzRc_I01Avk8oJR8-QEPrjAUbHy1JNI8Vmu630W7UV3mMwxK5tH0Ln6iteT1lsl_pVFl05iBqpq53Sp51Z0Q60x2vL0KBFOs8ss2IYX1f9Z2XHYNuArtra93pqY6VCIC0A4FU7nR9b6CmIwfdPS8UA8wKji2Kz7i3nw58asHej2VMByipKzd8HlJtLcAR9wdzuBUZdhwiZZWTXDznx9_1APFsDUfElz1vxLNT-5Q3D8VSMOE9ntf98PUo-69gLDm4dRGh8reAIXTiH_i-YjTnYSXz49A-hKOVJzRYjQcQqizYEkFFHmX1saMoHX0J7te-oNx9PW_yNpv4sZSGWTv9ut0M0qAbSQFsQJb46CJEfQFau-b8apRRkxyzOc16RcEH_09AFXfqXJROf3jlhVUhETBdY4rsD2X4CWBaD3qVIhE0CCp0-V0g7KBTIVkwh5gBqCAfHlN_qM-oxWrbtIEaDRJG1eUj9jPRuGkVICREROJXUNNjdM1jGrBB0jlkkxuTaffKp-m7sCgFuzFbRrETj7T_UeUumMAPrR52tVCQCOrY17tlZyzegl0UMsIWE5NT2nJpfpEDntEqRP1EdsdaL7vyueWYWYXg9G4jcKFpl7b4NaMASOvWUJk7oC712Fcr-kw5H_4nLjKHKRsbL74Yc2YyRTrW7USldop_vWzGeLTczdI6LUK5d4uVOm4v2yUJOSzJmXm9ArQ5JD7druf9cH-lWzNw8y12b-WM_jfyKlwCebeio8XXbVQfL9u8z9bWC_oZneDTVUB6ZLrqAuWReAUf7e_Wg6YS58Dw_4bS-bhMkUlIXyljtGHL7K3Pdo0vpImDK_Kp_I5-eXZFldX5eauZmsnO3aJnwl1_LHFJehQxtVwEBW8WLSVK19qCOHIAnajhB5QkaoxRCR0Ie4zgAIRP7MCAmx8P4LKn72zpGTx82I266PTWf4XWf3P_yvkg3YK2GuiKoNoEhTWc9718mSlUI0ijwmjswEdu8LDx9AFtvdFNaAC4mKfUYGxCo5m5naSGD1oEKzM6e6H9Do4tWB5tAPOojPBWfFmbZpngZPjNe85kH3aDI9AImV6FFjWZ7baT82baxXvDOdY6Fy-UhGsqiw2smHeBl_zzOE3MojUgDY0CTSbtMLDXRc_FhAVwG3400ShwqOS3e8dLYmfBdy9q-LMMDHxr0"
+                },
+                {
+                  "cursor": 2,
+                  "blob": "AAAAAAAAAAAAAAADLDq43PfvkVNlDKS7xdD8REodM8LTAw1uCvJqbt59Xm4eR9kTpW9dnzbkFA5jWoML7xnmSsdPV8XVjN90HGYNFEuNLtNxCdlRHsPwV9ldXyMq_V8cXMMwW465vSNZMVpOj6f6KlluXrBqwCeTwcXYdvqjsj59GJBBQMQR3Jz8QArIRnA-YG_IeWH9T2b8wUoRFcxPxXLnphlGKypQtWL7F4ioDDiabksCA7dblPrc9O_GO6jr9JJAGomP70SWSMNNclQnILqaJCyinV05DIB7R9N0SvWdUYDdBLbWy3ppSoK8ler5BitkLgfHMnj5S0f-JFlEJtRDSyoJEsTwtKxZgxUPhjaN8m9JnxXahi689Un3tM39pi-A4ZC042TE--MI5ljgF2EVCTAvX7DpHFXDqhfGTSgPcf5dZRZZcW2XIcNaY29Tt0766EZliwfG1DO2RJJ2qSaKsuPn4u1hxDcgnRWS6oUSk7NxXS18D9TWyYPGFkplnbBHqAQaOGWXakLUCVoc5XGq57sFS9vDkBmPVeAzkP5G3kIGawYl5OjQ7JxTOUQiFWJ7BWza4CTbh86thmHAQEmyJi5hFFNLR1yMGkGPf3X86tBBexWVA-GyFpV4zehPB1YHA93L1ZsCu3lFjmkKcBpglJaNnl_8OQ7-7hDQx0Jne0HYynb4YJw-CWBDZ3YehkpaxzNTiIMz6ZOujfPiBhjJpA2hwofFI8d94Z671FIHlWxD_87Zyg-4AXwae92LplVqOYy8jLVL4CM60Se44U_wRfHEQN9qu1jTexz1qUUX7ViEDgljOqtwqabxPbP2KA5jL-yKDOyGhC7A8IVUqhJD"
+                }
+              ],
+              "more": false
+            }
+          }
+        ],
+        "stored": 5,
+        "sent": 0,
+        "relayEpoch": "00000000000000000000000000000002",
+        "relayCursor": 2,
+        "relayVector": {
+          "aaaaaaaa-0000-4000-8000-000000000001": 3,
+          "bbbbbbbb-0000-4000-8000-000000000002": 2
+        },
+        "heldAfter": 5
+      }
+    ],
+    "relayBlobCount": 2,
+    "endOpRefs": [
+      "aaaaaaaa-0000-4000-8000-000000000001:1",
+      "aaaaaaaa-0000-4000-8000-000000000001:2",
+      "aaaaaaaa-0000-4000-8000-000000000001:3",
+      "bbbbbbbb-0000-4000-8000-000000000002:1",
+      "bbbbbbbb-0000-4000-8000-000000000002:2"
+    ]
+  },
   "http": [
     {
       "name": "unknownMailboxGetIsEmpty",
@@ -317,6 +504,7 @@
           "auth": "good",
           "status": 200,
           "response": {
+            "epoch": null,
             "batches": [],
             "more": false
           }
@@ -327,6 +515,7 @@
           "auth": "other",
           "status": 200,
           "response": {
+            "epoch": null,
             "batches": [],
             "more": false
           }
@@ -343,7 +532,8 @@
           "bodyBytes": 40,
           "status": 201,
           "response": {
-            "cursor": 1
+            "cursor": 1,
+            "epoch": "00000000000000000000000000000001"
           }
         },
         {
@@ -353,7 +543,8 @@
           "bodyBytes": 41,
           "status": 201,
           "response": {
-            "cursor": 2
+            "cursor": 2,
+            "epoch": "00000000000000000000000000000001"
           }
         },
         {
@@ -362,6 +553,7 @@
           "auth": "good",
           "status": 200,
           "response": {
+            "epoch": "00000000000000000000000000000001",
             "batches": [
               {
                 "cursor": 1,
@@ -387,7 +579,8 @@
           "bodyBytes": 40,
           "status": 201,
           "response": {
-            "cursor": 1
+            "cursor": 1,
+            "epoch": "00000000000000000000000000000001"
           }
         },
         {
@@ -440,7 +633,8 @@
           "bodyBytes": 40,
           "status": 201,
           "response": {
-            "cursor": 1
+            "cursor": 1,
+            "epoch": "00000000000000000000000000000001"
           }
         },
         {
@@ -459,6 +653,7 @@
           "auth": "other",
           "status": 200,
           "response": {
+            "epoch": "00000000000000000000000000000001",
             "batches": [
               {
                 "cursor": 1,
@@ -563,7 +758,8 @@
           "bodyBytes": 30,
           "status": 201,
           "response": {
-            "cursor": 1
+            "cursor": 1,
+            "epoch": "00000000000000000000000000000001"
           }
         },
         {
@@ -573,7 +769,8 @@
           "bodyBytes": 31,
           "status": 201,
           "response": {
-            "cursor": 2
+            "cursor": 2,
+            "epoch": "00000000000000000000000000000001"
           }
         },
         {
@@ -583,7 +780,8 @@
           "bodyBytes": 32,
           "status": 201,
           "response": {
-            "cursor": 3
+            "cursor": 3,
+            "epoch": "00000000000000000000000000000001"
           }
         },
         {
@@ -592,6 +790,7 @@
           "auth": "good",
           "status": 200,
           "response": {
+            "epoch": "00000000000000000000000000000001",
             "batches": [
               {
                 "cursor": 1,
@@ -611,6 +810,7 @@
           "auth": "good",
           "status": 200,
           "response": {
+            "epoch": "00000000000000000000000000000001",
             "batches": [
               {
                 "cursor": 3,
@@ -626,6 +826,7 @@
           "auth": "good",
           "status": 200,
           "response": {
+            "epoch": "00000000000000000000000000000001",
             "batches": [],
             "more": false
           }
@@ -636,6 +837,7 @@
           "auth": "good",
           "status": 200,
           "response": {
+            "epoch": "00000000000000000000000000000001",
             "batches": [],
             "more": false
           }
@@ -652,7 +854,8 @@
           "bodyBytes": 327680,
           "status": 201,
           "response": {
-            "cursor": 1
+            "cursor": 1,
+            "epoch": "00000000000000000000000000000001"
           }
         },
         {
@@ -681,6 +884,7 @@
           "auth": "good",
           "status": 200,
           "response": {
+            "epoch": "00000000000000000000000000000001",
             "batches": [
               {
                 "cursor": 1,

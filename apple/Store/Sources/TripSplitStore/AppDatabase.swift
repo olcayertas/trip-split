@@ -89,6 +89,10 @@ public struct AppDatabase: Sendable {
                 t.add(column: "relay_vector", .text).notNull().defaults(to: "{}")
             }
         }
+        // The mailbox epoch (SPEC §10.4.4 step 4). Null until the relay has told it.
+        m.registerMigration("v3-relay-epoch") { db in
+            try db.alter(table: "groups") { t in t.add(column: "relay_epoch", .text) }
+        }
         return m
     }
 }

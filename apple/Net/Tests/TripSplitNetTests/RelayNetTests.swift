@@ -51,11 +51,11 @@ struct RelayHTTPClientTests {
     @Test func pullSendsTheTokenAndReadsTheBatches() async throws {
         let blob: [UInt8] = [1, 2, 3, 250, 251]
         StubProtocol.handler = { _ in
-            (200, Data(#"{"batches":[{"cursor":4,"blob":"\#(Base64URL.encode(blob))"}],"more":true}"#.utf8))
+            (200, Data(#"{"epoch":"0000000000000000000000000000000a","batches":[{"cursor":4,"blob":"\#(Base64URL.encode(blob))"}],"more":true}"#.utf8))
         }
         let c = client()
         let page = try await c.pull(after: 3, limit: 50)
-        #expect(page == RelayPage(batches: [.init(cursor: 4, blob: blob)], more: true))
+        #expect(page == RelayPage(batches: [.init(cursor: 4, blob: blob)], more: true, epoch: "0000000000000000000000000000000a"))
         let request = try #require(StubProtocol.seen.first)
         #expect(request.httpMethod == "GET")
         #expect(request.url?.path == "/v1/m/\(RelayCrypto.mailboxId(groupKey: key))/batches")
@@ -64,10 +64,10 @@ struct RelayHTTPClientTests {
     }
 
     @Test func pushSendsTheBlobAsBytes() async throws {
-        StubProtocol.handler = { _ in (201, Data(#"{"cursor":12}"#.utf8)) }
+        StubProtocol.handler = { _ in (201, Data(#"{"cursor":12,"epoch":"0000000000000000000000000000000a"}"#.utf8)) }
         let c = client()
-        let cursor = try await c.push([9, 8, 7])
-        #expect(cursor == 12)
+        let ack = try await c.push([9, 8, 7])
+        #expect(ack == RelayPushAck(cursor: 12, epoch: "0000000000000000000000000000000a"))
         let request = try #require(StubProtocol.seen.first)
         #expect(request.httpMethod == "POST")
         #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/octet-stream")
