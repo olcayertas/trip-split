@@ -221,6 +221,20 @@ The workflow `.github/workflows/pages.yml` publishes `docs/privacy/` when a chan
   `apple/project.yml`. The `beta` lane sets the build number. Do not put fixed values in `Info.plist`.
 - The app icon comes from `design/icon/gen_icon.py` (needs `rsvg-convert`). Change the generator and run it again. Never edit the PNGs by hand.
 
-- `gym` passes `xcargs` to the export step too. The `beta` lane sends the same auth arguments to the archive and the export. Check the export step on the first real run.
+- `gym` adds the API key arguments to the export step itself. Do not pass them in `export_xcargs`
+  too: `xcodebuild` refuses `-authenticationKeyPath` twice.
+- Cloud signing needs a key permission that an App Manager key does not have. The lanes export with
+  manual signing: the local "Apple Distribution" certificate and the `com.olcayertas.TripSplit AppStore`
+  profile, which `get_provisioning_profile` makes on the first run.
+- Lanes run with `apple/fastlane/` as the working directory. The Fastfile builds every path from `APPLE_DIR`.
+- `fastlane ios build` archives and exports a signed .ipa to `apple/build/` and uploads nothing. Use it
+  for a dry run before `beta`.
+- External testers ("Trip testers") get a build only after Apple's beta review. Apple reviews the first
+  build of each version again. The internal group "Core team" has access to all builds with no review,
+  but its members must be users on the App Store Connect team with access to TripSplit.
+- The Android APK has only the ARM libraries (`arm64-v8a`, `armeabi-v7a`). An emulator on an Intel host
+  cannot install it. On Apple silicon, the arm64 emulator works.
+- On the emulator, `-camera-back imagefile:<file>` shows an image to the camera. Only the left part of
+  the image is in the frame: put a test QR code in the left half.
 - `latest_testflight_build_number` needs the app record. Make the record first, or the lane fails.
 - A key with a role lower than App Manager cannot make signing assets. Make the key again with the correct role.

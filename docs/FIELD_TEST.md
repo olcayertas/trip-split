@@ -1,12 +1,12 @@
-# Field test (phase 9)
+# Field test (phases 9 and 10)
 
 Unit tests, golden vectors and the reference peer prove that the two apps agree byte for byte. They
 cannot prove that real radios work. This page lists the tests that only real phones can do.
 
 ## What you need
 
-- At least one iPhone (iOS 18 or later) with the TestFlight build.
-- At least one Android phone (Android 10 or later) with the release APK. Two Android brands are better,
+- At least one iPhone (iOS 18 or later) with TestFlight 1.0.1 (build 3) or later.
+- At least one Android phone (Android 10 or later) with APK 1.0.2 or later. Two Android brands are better,
   because Bluetooth stacks differ.
 - A Wi-Fi network that you control, and mobile data for a hotspot.
 
@@ -86,6 +86,26 @@ yours on every phone.
 
 Expected: all three phones converge to the same balances. This is the phase 9 acceptance test in
 [PLAN.md](PLAN.md) §15.
+
+### 8. Sync over the internet, two networks
+
+1. Put phone A on Wi-Fi. Turn Wi-Fi off on phone B, so it uses mobile data. Keep the phones far apart,
+   or turn Bluetooth off on both.
+2. Make sure "Sync over the internet" is on (iPhone: Nearby screen; Android: Settings).
+3. Add an expense on each phone. Open the group on each phone.
+
+Expected: within about a minute, both phones show both expenses and the same balances. This is the
+phase 10 acceptance test in [PLAN.md](PLAN.md) §15.
+
+Then switch "Sync over the internet" off on phone B, add one more expense on phone A, and wait two
+minutes. Expected: phone B does not get it until the switch is on again.
+
+### 9. Turn the phone
+
+1. On a new install, enter your name and continue.
+2. Turn the phone to landscape and back, on each screen.
+
+Expected: the app never shows the Welcome screen again. Android 1.0.1 had this bug; 1.0.2 fixes it.
 
 ## When something fails
 

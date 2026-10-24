@@ -2,6 +2,10 @@
 
 Status: reviewed (Fable 5.1, 2026-10-23); all 15 findings applied. Date: 2026-10-23.
 
+Current state (2026-10-24): phases 0–8 and 10 are done on both platforms. The relay is live at
+`https://tripsplit-relay.olcayertas.workers.dev`. Releases: TestFlight 1.0.1 (build 3) and Android APK 1.0.2.
+Phase 9 (the field test on real phones) and the phase 10 acceptance on two networks are open.
+
 ## 1. Goal
 
 TripSplit is a mobile app for a group on holiday. The members record shared expenses. The app shows
@@ -580,19 +584,19 @@ fails if either core module fails a vector.
 Each phase ends with green tests on both platforms. Each phase is one or more PRs linked to the
 GitHub tracking issue.
 
-| # | Phase | Done when |
-|---|---|---|
-| 0 | Repo, CI skeleton, `protocol/SPEC.md` v1, vectors for currencies, canonical JSON, HLC, money, split | vectors exist; both core modules compile; CI runs |
-| 1 | Core domain on both platforms: ops, HLC, fold (incl. claims, field groups), money, split, settlement | all domain vectors pass on iOS and Android |
-| 2 | Crypto + framing + sync session engine with in-memory fake links, **including join of an empty device** (invite parse → first session) | `crypto.json` + `session.json` pass; fuzz test: random op sets on N fake devices converge |
-| 3 | Persistence (GRDB / Room), repositories, install marker + backup exclusion | op insert is idempotent; restart keeps state; restore simulation mints a new deviceId |
-| 4 | UI: first run, groups, create, members, expenses, balances, history | manual walkthrough on simulator/emulator; UI tests for add-expense flow |
-| 5 | LAN transport + Nearby screen | iPhone ↔ Android sync over one Wi-Fi and over a hotspot (both directions of host) |
-| 6 | BLE transport | iPhone ↔ Android sync over BLE with Wi-Fi off; join of a 500-op group completes |
-| 7 | Invite UI (QR make + scan, share warning), member claim UI | a new phone joins on day 3 and claims a pre-added member |
-| 8 | Distribution: Fastlane `beta`, Android release script, privacy page | TestFlight build installs; APK installs on a clean phone |
-| 9 | Field test with 3+ devices, mixed platforms; fix list | three phones converge after a day of offline edits |
-| 10 | Internet relay (§9.4): SPEC §10.4, reference relay, `relay.json` vectors, Cloudflare Worker, client in both apps, settings switch, privacy page | both apps pass `relay.json`; the Worker passes its tests; an iPhone and an Android phone on two networks converge through the deployed relay |
+| # | Phase | Done when | State (2026-10-24) |
+|---|---|---|---|
+| 0 | Repo, CI skeleton, `protocol/SPEC.md` v1, vectors for currencies, canonical JSON, HLC, money, split | vectors exist; both core modules compile; CI runs | done |
+| 1 | Core domain on both platforms: ops, HLC, fold (incl. claims, field groups), money, split, settlement | all domain vectors pass on iOS and Android | done |
+| 2 | Crypto + framing + sync session engine with in-memory fake links, **including join of an empty device** (invite parse → first session) | `crypto.json` + `session.json` pass; fuzz test: random op sets on N fake devices converge | done |
+| 3 | Persistence (GRDB / Room), repositories, install marker + backup exclusion | op insert is idempotent; restart keeps state; restore simulation mints a new deviceId | done |
+| 4 | UI: first run, groups, create, members, expenses, balances, history | manual walkthrough on simulator/emulator; UI tests for add-expense flow | done |
+| 5 | LAN transport + Nearby screen | iPhone ↔ Android sync over one Wi-Fi and over a hotspot (both directions of host) | done (devices: field test) |
+| 6 | BLE transport | iPhone ↔ Android sync over BLE with Wi-Fi off; join of a 500-op group completes | done (devices: field test) |
+| 7 | Invite UI (QR make + scan, share warning), member claim UI | a new phone joins on day 3 and claims a pre-added member | done |
+| 8 | Distribution: Fastlane `beta`, Android release script, privacy page | TestFlight build installs; APK installs on a clean phone | done: TestFlight 1.0.1 (3), APK 1.0.2 |
+| 9 | Field test with 3+ devices, mixed platforms; fix list | three phones converge after a day of offline edits | open |
+| 10 | Internet relay (§9.4): SPEC §10.4, reference relay, `relay.json` vectors, Cloudflare Worker, client in both apps, settings switch, privacy page | both apps pass `relay.json`; the Worker passes its tests; an iPhone and an Android phone on two networks converge through the deployed relay | done, except the two-network test on real phones |
 
 Phases 0–2 hold most of the risk that unit tests can catch. Phases 5–6 hold the risk that only real
 devices can catch; the owner must provide at least one real iPhone and one real Android phone for them
