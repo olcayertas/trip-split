@@ -40,7 +40,12 @@ object Routes {
 @Composable
 fun Root(container: AppContainer) {
     var identity by remember { mutableStateOf<DeviceIdentity?>(null) }
-    LaunchedEffect(container) { identity = container.identity.await() }
+    // container.identity is fixed at app start. Read the stored row too: after a rotation, Root starts again and
+    // must see the name that the user saved after the start, or it shows the first-run screen again.
+    LaunchedEffect(container) {
+        val started = container.identity.await()
+        identity = container.identityManager.current() ?: started
+    }
     val scope = rememberCoroutineScope()
     val current = identity
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {

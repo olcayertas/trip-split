@@ -517,7 +517,8 @@ Localisation: English and Turkish from the start (string catalogs on iOS, `strin
   the cached 8.14.3 distribution.
 - `minSdk 29` (Android 10). Modules: `:core` (pure Kotlin/JVM), `:app`.
 - Dependencies: Room + KSP, kotlinx.serialization (canonical JSON writer is hand-written, see §13),
-  CameraX + ML Kit barcode (bundled model, works offline) for QR scan, ZXing core for QR make.
+  CameraX + ZXing core for QR scan and QR make (pure Java, works offline, no native library). The
+  bundled ML Kit scanner was 20 MB of native code; it was replaced on 2026-10-24.
 - Application id `com.olcayertas.tripsplit`.
 
 ## 13. The contract: `protocol/`
