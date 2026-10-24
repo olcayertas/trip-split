@@ -68,7 +68,8 @@ struct SyncOverSQLiteTests {
         #expect(await guest.state(of: id) == host.state(of: id))
         #expect(await guest.state(of: id).members.count == 31)
         // The guest now writes with its own device id and seq 1.
-        let guestMember = await guest.state(of: id).members[1].id
+        // Members are sorted by their random id. Pick one that nobody claims: the creator is claimed by the host.
+        let guestMember = try #require(await guest.state(of: id).members.first { $0.claimedBy == nil }).id
         let claim = try await guest.append(groupId: id, type: "member.claim", body: .object(["memberId": .string(guestMember)]))
         #expect(claim["seq"]?.intValue == 1)
         #expect(await guest.myMember(in: id)?.id == guestMember)
