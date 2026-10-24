@@ -191,7 +191,9 @@ One-time setup (owner):
 6. Give the URL to the app builds (no trailing slash):
    - iOS: build setting `RELAY_BASE_URL` (it goes to `RelayBaseURL` in Info.plist).
    - Android: Gradle property `-PrelayBaseUrl=https://...`.
-   Without it, a build has no working relay address (the Android default is `https://relay.invalid`).
+   The live relay is `https://tripsplit-relay.olcayertas.workers.dev` (first deploy 2026-10-24). It is the
+   default in `apple/project.yml` and `android/app/build.gradle.kts`. To build without the relay, set
+   the URL to `https://relay.invalid`: the app then keeps the relay sync off.
 
 Later deploys: `cd relay && npm test && npx wrangler deploy`.
 
