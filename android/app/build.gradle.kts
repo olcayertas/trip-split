@@ -27,6 +27,8 @@ android {
         // Set it with -PrelayBaseUrl=https://... for a build that talks to a relay.
         val relayUrl = providers.gradleProperty("relayBaseUrl").getOrElse("https://tripsplit-relay.olcayertas.workers.dev")
         buildConfigField("String", "RELAY_BASE_URL", "\"$relayUrl\"")
+        // Real phones are ARM. The x86 libraries are for emulators on Intel hosts only and doubled the APK size.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     signingConfigs {
@@ -91,13 +93,12 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.navigation.compose)
 
-    // QR: ZXing core makes the code. CameraX and the bundled ML Kit model scan it, offline.
+    // QR: ZXing core makes the code and reads it from the CameraX frames (QrDecoder). Offline, no native code.
     implementation(libs.zxing.core)
     implementation(libs.camerax.core)
     implementation(libs.camerax.camera2)
     implementation(libs.camerax.lifecycle)
     implementation(libs.camerax.view)
-    implementation(libs.mlkit.barcode)
     debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(platform(libs.compose.bom))

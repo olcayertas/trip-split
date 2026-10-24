@@ -28,16 +28,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.common.InputImage
 import com.olcayertas.tripsplit.R
 import java.util.concurrent.Executors
 
 /**
- * A camera preview that reads QR codes with the bundled ML Kit model (it works offline). [onCode] gets the text
- * of each QR code once per frame, so the caller must ignore repeats.
+ * A camera preview that reads QR codes with ZXing core ([QrDecoder]). It works offline and needs no native
+ * library. [onCode] gets the text of each QR code once per frame, on the main thread, so the caller must ignore
+ * repeats.
  */
 @Composable
 fun QrScanner(onCode: (String) -> Unit, modifier: Modifier = Modifier) {
@@ -55,9 +52,8 @@ fun QrScanner(onCode: (String) -> Unit, modifier: Modifier = Modifier) {
     }
     val owner = LocalLifecycleOwner.current
     val executor = remember { Executors.newSingleThreadExecutor() }
-    val scanner = remember {
-        BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
-    }
+    val decoder = remember { QrDecoder() }
+    var luma = remember { ByteArray(0) }
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { ctx ->
@@ -69,17 +65,18 @@ fun QrScanner(onCode: (String) -> Unit, modifier: Modifier = Modifier) {
                 val analysis = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
+                val main = ContextCompat.getMainExecutor(ctx)
                 analysis.setAnalyzer(executor) { proxy ->
-                    @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
-                    val media = proxy.image
-                    if (media == null) {
-                        proxy.close()
-                    } else {
-                        val image = InputImage.fromMediaImage(media, proxy.imageInfo.rotationDegrees)
-                        scanner.process(image)
-                            .addOnSuccessListener { codes -> codes.firstNotNullOfOrNull { it.rawValue }?.let(onCode) }
-                            .addOnCompleteListener { proxy.close() }
+                    // ImageAnalysis gives YUV_420_888 by default. Plane 0 is the luminance, one byte for each pixel.
+                    val text = proxy.use {
+                        val plane = it.planes[0]
+                        val buffer = plane.buffer.apply { rewind() }
+                        val size = plane.rowStride * it.height
+                        if (luma.size < size) luma = ByteArray(size)
+                        buffer.get(luma, 0, minOf(buffer.remaining(), size))
+                        decoder.decode(luma, plane.rowStride, it.width, it.height)
                     }
+                    if (text != null) main.execute { onCode(text) }
                 }
                 provider.unbindAll()
                 provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
