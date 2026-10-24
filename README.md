@@ -106,8 +106,9 @@ There is also a Python peer (`protocol/tools/peer.py`) that syncs with a real ph
 |---|---|
 | [`apple/`](apple/) | The SwiftUI app: `Core`, `Store` (GRDB), `Net` (Bonjour and Bluetooth) |
 | [`android/`](android/) | The Jetpack Compose app and its Kotlin core |
-| [`protocol/`](protocol/) | The spec, the reference model, the vectors and the test peer |
-| [`design/`](design/) | Material 3 colour tokens from one seed colour, for both apps |
+| [`protocol/`](protocol/) | The spec, the reference model, the vectors, the test peer and the reference relay |
+| [`relay/`](relay/) | The internet relay: a Cloudflare Worker with one Durable Object for each group mailbox |
+| [`design/`](design/) | Material 3 colour tokens from one seed colour, and the app icon generator (`design/icon/`) |
 | [`docs/`](docs/) | The [plan](docs/PLAN.md), the [release runbook](docs/RELEASING.md) and the [privacy policy](docs/privacy/index.md) |
 
 ## 🚦 Status
@@ -121,11 +122,18 @@ There is also a Python peer (`protocol/tools/peer.py`) that syncs with a real ph
 | Wi-Fi sync | ✅ | ✅ |
 | Bluetooth sync | ✅ | ✅ |
 | QR invite and member claim | ✅ | ✅ |
-| TestFlight and APK | 🛠️ | 🛠️ |
+| Internet relay (Cloudflare Worker, live) | ✅ | ✅ |
+| Release | ✅ TestFlight 1.0.1 (3) | ✅ APK 1.0.2 |
 | Field test on real phones | 🧪 | 🧪 |
 
-✅ means built and tested on simulators and with the reference peer. Real radios come with the
-[field test](docs/FIELD_TEST.md).
+✅ means built and tested on simulators, the emulator and with the reference peer and relay. Real
+radios and two phones on two networks come with the [field test](docs/FIELD_TEST.md).
+
+## 📲 Get the app
+
+- **Android:** download the APK from the [latest release](https://github.com/olcayertas/trip-split/releases/latest)
+  and install it over any older version. Do not uninstall first, or you lose your data. Android 10 or later.
+- **iPhone:** TestFlight, by invitation from the owner. iOS 18 or later.
 
 Work is tracked in issue [#1](https://github.com/olcayertas/trip-split/issues/1).
 
@@ -140,6 +148,12 @@ cd apple/Core && swift test
 
 # Kotlin core tests (JDK 21)
 cd android && ./gradlew :core:test
+
+# Reference relay and peer tests
+python3 protocol/tools/test_relay.py && python3 protocol/tools/test_peer.py
+
+# Relay Worker tests (Miniflare)
+cd relay && npm ci && npm test
 ```
 
 The iOS project comes from XcodeGen (`apple/project.yml`). The release steps are in
